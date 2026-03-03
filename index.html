@@ -1,0 +1,1683 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SolarYield India — Advanced PV Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=JetBrains+Mono:wght@300;400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<style>
+:root{
+  --amber:#F59E0B;--amber-light:#FCD34D;--amber-glow:rgba(245,158,11,0.15);
+  --teal:#14B8A6;--teal-glow:rgba(20,184,166,0.12);--emerald:#10B981;
+  --blue:#3B82F6;--orange:#F97316;--red:#EF4444;--violet:#8B5CF6;
+  --bg:#070C18;--bg2:#0C1220;--bg3:#111827;
+  --panel:#0F172A;--panel2:#1E293B;
+  --border:rgba(245,158,11,0.12);--border2:rgba(255,255,255,0.06);
+  --text:#F1F5F9;--muted:#64748B;--muted2:#94A3B8;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+html{scroll-behavior:smooth;}
+body{background:var(--bg);color:var(--text);font-family:'JetBrains Mono',monospace;font-size:13px;min-height:100vh;overflow-x:hidden;}
+body::before{content:'';position:fixed;inset:0;z-index:0;
+  background:radial-gradient(ellipse 60% 40% at 20% 0%,rgba(245,158,11,0.05) 0%,transparent 55%),
+  radial-gradient(ellipse 50% 40% at 80% 100%,rgba(20,184,166,0.04) 0%,transparent 50%);pointer-events:none;}
+.app{position:relative;z-index:1;display:flex;flex-direction:column;min-height:100vh;}
+
+/* HEADER */
+header{display:flex;align-items:center;justify-content:space-between;padding:0 1.5rem;height:60px;
+  border-bottom:1px solid var(--border);background:rgba(7,12,24,0.95);backdrop-filter:blur(20px);
+  position:sticky;top:0;z-index:100;}
+.logo{display:flex;align-items:center;gap:10px;}
+.logo-sun{width:32px;height:32px;background:conic-gradient(from 0deg,#F59E0B,#EF4444,#F59E0B);
+  border-radius:50%;box-shadow:0 0 14px rgba(245,158,11,0.6),0 0 36px rgba(245,158,11,0.2);
+  animation:spin-slow 12s linear infinite;flex-shrink:0;}
+@keyframes spin-slow{to{transform:rotate(360deg);}}
+.logo-text{font-family:'Syne',sans-serif;font-size:1.2rem;font-weight:800;color:var(--amber);letter-spacing:-0.5px;}
+.logo-text span{color:var(--teal);}
+.logo-sub{font-size:0.55rem;color:var(--muted);letter-spacing:3px;text-transform:uppercase;}
+.hdr-right{display:flex;gap:6px;align-items:center;flex-wrap:wrap;}
+.hbtn{padding:5px 12px;border-radius:5px;font-family:'JetBrains Mono',monospace;
+  font-size:0.65rem;letter-spacing:1px;text-transform:uppercase;cursor:pointer;
+  border:1px solid var(--border);background:transparent;color:var(--muted2);transition:all .2s;}
+.hbtn:hover{border-color:var(--amber);color:var(--amber);}
+.hbtn.primary{background:var(--amber);color:#000;border-color:var(--amber);font-weight:700;}
+.hbtn.primary:hover{background:var(--amber-light);box-shadow:0 0 18px rgba(245,158,11,.4);}
+#api-badge{font-size:0.6rem;padding:4px 10px;border-radius:20px;border:1px solid rgba(245,158,11,.25);
+  background:rgba(245,158,11,.08);color:var(--amber);display:flex;align-items:center;gap:5px;}
+
+/* STATUS BAR */
+.sbar{display:flex;gap:1.5rem;padding:6px 1.5rem;border-bottom:1px solid var(--border2);
+  background:var(--bg2);font-size:.6rem;letter-spacing:1px;text-transform:uppercase;color:var(--muted);overflow-x:auto;}
+.si{display:flex;align-items:center;gap:5px;white-space:nowrap;}
+.dot{width:5px;height:5px;border-radius:50%;background:var(--muted);}
+.dot.on{background:var(--emerald);box-shadow:0 0 5px var(--emerald);animation:blink 2s infinite;}
+.dot.warn{background:var(--amber);}
+@keyframes blink{0%,100%{opacity:1;}50%{opacity:.4;}}
+
+/* LAYOUT */
+.wrap{display:flex;flex:1;}
+
+/* SIDEBAR */
+.sb{width:330px;flex-shrink:0;border-right:1px solid var(--border);background:var(--panel);
+  overflow-y:auto;height:calc(100vh - 82px);position:sticky;top:60px;}
+.sb::-webkit-scrollbar{width:3px;}
+.sb::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px;}
+.ss{padding:1rem 1.2rem;border-bottom:1px solid var(--border2);}
+.st{font-family:'Syne',sans-serif;font-size:.6rem;font-weight:700;letter-spacing:3px;
+  text-transform:uppercase;color:var(--amber);display:flex;align-items:center;gap:7px;margin-bottom:.9rem;}
+label{display:block;font-size:.6rem;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-bottom:3px;margin-top:8px;}
+label:first-child{margin-top:0;}
+input,select{width:100%;background:var(--bg3);border:1px solid var(--border2);color:var(--text);
+  padding:7px 9px;border-radius:4px;font-family:'JetBrains Mono',monospace;font-size:.82rem;transition:border-color .2s,box-shadow .2s;}
+input:focus,select:focus{outline:none;border-color:var(--amber);box-shadow:0 0 0 2px rgba(245,158,11,.1);}
+select option{background:var(--bg3);}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:7px;}
+.g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:7px;}
+
+/* Tariff display box */
+.tariff-box{background:var(--bg3);border:1px solid var(--border2);border-radius:5px;padding:8px 10px;
+  margin-top:8px;display:grid;grid-template-columns:1fr 1fr;gap:4px;}
+.tb-row{display:flex;justify-content:space-between;align-items:center;font-size:.65rem;}
+.tb-label{color:var(--muted);}
+.tb-val{font-weight:600;}
+.tb-val.import{color:var(--red);}
+.tb-val.export{color:var(--emerald);}
+.tb-source{grid-column:1/-1;font-size:.55rem;color:var(--muted);margin-top:3px;border-top:1px solid var(--border2);padding-top:4px;}
+
+/* compass */
+.compass-wrap{display:flex;justify-content:center;margin:10px 0 5px;}
+.compass{position:relative;width:80px;height:80px;}
+.compass-ring{width:100%;height:100%;border-radius:50%;border:1.5px solid rgba(245,158,11,.3);
+  background:radial-gradient(circle,rgba(245,158,11,.03),transparent 70%);position:relative;}
+.cd{position:absolute;font-size:.55rem;font-weight:700;color:var(--amber);}
+.cd.N{top:2px;left:50%;transform:translateX(-50%);}
+.cd.S{bottom:2px;left:50%;transform:translateX(-50%);color:var(--muted);}
+.cd.E{right:4px;top:50%;transform:translateY(-50%);}
+.cd.W{left:4px;top:50%;transform:translateY(-50%);}
+.cd.C{top:50%;left:50%;transform:translate(-50%,-50%);color:var(--muted);font-size:.5rem;text-align:center;line-height:1.3;}
+
+/* fetch btn */
+.fbtn{display:flex;align-items:center;gap:5px;padding:6px 10px;border-radius:4px;
+  background:var(--teal-glow);border:1px solid rgba(20,184,166,.3);color:var(--teal);
+  font-family:'JetBrains Mono',monospace;font-size:.65rem;letter-spacing:1px;cursor:pointer;
+  margin-top:8px;width:100%;justify-content:center;transition:all .2s;}
+.fbtn:hover{background:rgba(20,184,166,.2);border-color:var(--teal);}
+.fbtn.loading{opacity:.6;cursor:wait;}
+.irr-msg{display:flex;align-items:center;gap:5px;font-size:.6rem;padding:5px 8px;
+  border-radius:4px;border:1px solid;margin-top:6px;}
+.irr-msg.ok{border-color:rgba(16,185,129,.3);background:rgba(16,185,129,.05);color:var(--emerald);}
+.irr-msg.warn{border-color:rgba(245,158,11,.3);background:rgba(245,158,11,.05);color:var(--amber);}
+.irr-msg.err{border-color:rgba(239,68,68,.3);background:rgba(239,68,68,.05);color:var(--red);}
+
+/* loan section */
+.loan-toggle{display:flex;align-items:center;gap:8px;cursor:pointer;user-select:none;margin-bottom:.6rem;}
+.toggle-sw{width:36px;height:18px;background:var(--bg3);border:1px solid var(--border2);
+  border-radius:9px;position:relative;transition:background .2s;}
+.toggle-sw.on{background:var(--amber);}
+.toggle-knob{width:12px;height:12px;background:#fff;border-radius:50%;
+  position:absolute;top:2px;left:2px;transition:left .2s;box-shadow:0 1px 3px rgba(0,0,0,.3);}
+.toggle-sw.on .toggle-knob{left:20px;}
+.toggle-label{font-size:.65rem;color:var(--muted2);letter-spacing:1px;}
+.loan-fields{display:none;}
+.loan-fields.show{display:block;}
+
+/* EMI preview */
+.emi-preview{background:linear-gradient(135deg,rgba(139,92,246,.1),rgba(59,130,246,.05));
+  border:1px solid rgba(139,92,246,.25);border-radius:6px;padding:10px;margin-top:8px;}
+.emi-row{display:flex;justify-content:space-between;align-items:center;font-size:.65rem;margin-bottom:3px;}
+.emi-row:last-child{margin-bottom:0;border-top:1px solid rgba(139,92,246,.2);padding-top:5px;margin-top:5px;}
+.emi-val{color:var(--violet);font-weight:700;font-size:.8rem;}
+.emi-val.total{color:var(--amber);font-size:.9rem;}
+
+/* calc btn */
+.calc-btn{margin:1rem 1.2rem;width:calc(100% - 2.4rem);padding:11px;border-radius:5px;
+  background:linear-gradient(135deg,#F59E0B,#F97316);border:none;color:#000;
+  font-family:'Syne',sans-serif;font-size:.9rem;font-weight:800;letter-spacing:2px;text-transform:uppercase;
+  cursor:pointer;transition:all .2s;box-shadow:0 4px 18px rgba(245,158,11,.3);}
+.calc-btn:hover{transform:translateY(-2px);box-shadow:0 8px 28px rgba(245,158,11,.5);}
+
+/* CONTENT */
+.content{flex:1;overflow-y:auto;padding:1.2rem;}
+
+/* TABS */
+.tabs{display:flex;gap:3px;margin-bottom:1.2rem;border-bottom:1px solid var(--border);flex-wrap:wrap;}
+.tab{padding:7px 14px;border-radius:5px 5px 0 0;cursor:pointer;font-size:.65rem;letter-spacing:1.5px;
+  text-transform:uppercase;color:var(--muted);transition:all .2s;border:1px solid transparent;
+  border-bottom:none;position:relative;bottom:-1px;}
+.tab.active{color:var(--amber);border-color:var(--border);border-bottom-color:var(--bg);background:var(--bg);}
+.tp{display:none;}
+.tp.active{display:block;animation:fadeUp .3s ease;}
+@keyframes fadeUp{from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:translateY(0);}}
+
+/* PLACEHOLDER */
+.placeholder{display:flex;flex-direction:column;align-items:center;justify-content:center;
+  height:380px;gap:14px;color:var(--muted);text-align:center;}
+.ph-sun{font-size:3.5rem;opacity:.2;animation:float 4s ease-in-out infinite;}
+@keyframes float{0%,100%{transform:translateY(0);}50%{transform:translateY(-10px);}}
+
+/* KPI GRID */
+.kgrid{display:grid;gap:8px;margin-bottom:1.2rem;}
+.kgrid-6{grid-template-columns:repeat(6,1fr);}
+.kgrid-4{grid-template-columns:repeat(4,1fr);}
+.kgrid-5{grid-template-columns:repeat(5,1fr);}
+.kpi{background:var(--panel);border:1px solid var(--border2);border-radius:7px;padding:12px 10px;
+  position:relative;overflow:hidden;transition:border-color .2s,transform .2s;}
+.kpi:hover{border-color:var(--border);transform:translateY(-2px);}
+.kpi::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;}
+.kpi.amber::before{background:linear-gradient(90deg,var(--amber),transparent);}
+.kpi.teal::before{background:linear-gradient(90deg,var(--teal),transparent);}
+.kpi.emerald::before{background:linear-gradient(90deg,var(--emerald),transparent);}
+.kpi.blue::before{background:linear-gradient(90deg,var(--blue),transparent);}
+.kpi.orange::before{background:linear-gradient(90deg,var(--orange),transparent);}
+.kpi.red::before{background:linear-gradient(90deg,var(--red),transparent);}
+.kpi.violet::before{background:linear-gradient(90deg,var(--violet),transparent);}
+.kval{font-family:'Syne',sans-serif;font-size:1.4rem;font-weight:800;line-height:1;}
+.kval.amber{color:var(--amber);}.kval.teal{color:var(--teal);}
+.kval.emerald{color:var(--emerald);}.kval.blue{color:var(--blue);}
+.kval.orange{color:var(--orange);}.kval.red{color:var(--red);}
+.kval.violet{color:var(--violet);}
+.kunit{font-size:.55rem;color:var(--muted);letter-spacing:1px;margin-top:2px;}
+.klabel{font-size:.55rem;color:var(--muted2);letter-spacing:1px;text-transform:uppercase;margin-top:5px;}
+
+/* PANEL */
+.panel{background:var(--panel);border:1px solid var(--border2);border-radius:9px;padding:1.1rem;margin-bottom:.9rem;}
+.ph{display:flex;justify-content:space-between;align-items:center;margin-bottom:.9rem;}
+.pt{font-family:'Syne',sans-serif;font-size:.7rem;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--muted2);}
+.pbadge{font-size:.55rem;padding:2px 7px;border-radius:20px;background:var(--amber-glow);color:var(--amber);border:1px solid rgba(245,158,11,.2);}
+
+/* FLOW */
+.flow-wrap{overflow-x:auto;}
+.flow-diag{display:flex;align-items:center;justify-content:space-between;padding:1rem .5rem;gap:3px;min-width:520px;}
+.fn{display:flex;flex-direction:column;align-items:center;gap:5px;flex:1;}
+.fb{width:75px;height:62px;border-radius:8px;border:1.5px solid;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  font-family:'Syne',sans-serif;font-size:.55rem;font-weight:700;letter-spacing:1px;text-transform:uppercase;gap:3px;}
+.fb.solar{border-color:var(--amber);color:var(--amber);background:rgba(245,158,11,.05);}
+.fb.inv{border-color:var(--teal);color:var(--teal);background:rgba(20,184,166,.05);}
+.fb.load{border-color:var(--emerald);color:var(--emerald);background:rgba(16,185,129,.05);}
+.fb.bat{border-color:var(--blue);color:var(--blue);background:rgba(59,130,246,.05);}
+.fb.grid{border-color:var(--orange);color:var(--orange);background:rgba(249,115,22,.05);}
+.fbv{font-size:.9rem;font-weight:800;}
+.fa{flex-shrink:0;display:flex;flex-direction:column;align-items:center;gap:2px;}
+.al{height:2px;background:linear-gradient(90deg,transparent,var(--muted),transparent);width:24px;position:relative;}
+.al::after{content:'';position:absolute;right:-1px;top:-4px;
+  border-left:7px solid var(--muted);border-top:4px solid transparent;border-bottom:4px solid transparent;}
+.fa.on .al{background:linear-gradient(90deg,transparent,var(--amber),transparent);}
+.fa.on .al::after{border-left-color:var(--amber);}
+.av{font-size:.52rem;color:var(--muted);white-space:nowrap;}
+.fn-lbl{font-size:.52rem;color:var(--muted);}
+
+/* CHARTS */
+.chart-bars{display:flex;align-items:flex-end;gap:5px;height:130px;padding:0 2px;}
+.bg{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;}
+.bs{width:100%;display:flex;flex-direction:column-reverse;border-radius:2px 2px 0 0;overflow:hidden;cursor:pointer;}
+.bseg{width:100%;transition:height .6s cubic-bezier(.34,1.56,.64,1);}
+.bm{font-size:.5rem;color:var(--muted);letter-spacing:.5px;text-align:center;}
+.cleg{display:flex;gap:.8rem;margin-top:8px;flex-wrap:wrap;}
+.li{display:flex;align-items:center;gap:4px;font-size:.58rem;color:var(--muted2);}
+.ld{width:7px;height:7px;border-radius:2px;}
+
+/* DATA TABLE */
+.dt{width:100%;border-collapse:collapse;font-size:.68rem;}
+.dt tr{border-bottom:1px solid var(--border2);}
+.dt tr:last-child{border-bottom:none;}
+.dt td{padding:6px 3px;}
+.dt td:first-child{color:var(--muted2);}
+.dt td:last-child{text-align:right;font-weight:600;}
+.dt td.amber{color:var(--amber);}.dt td.teal{color:var(--teal);}
+.dt td.emerald{color:var(--emerald);}.dt td.red{color:var(--red);}
+.dt td.violet{color:var(--violet);}
+
+/* GAUGES */
+.gauge-row{display:flex;gap:.8rem;justify-content:center;flex-wrap:wrap;margin-top:8px;}
+.gauge-wrap{text-align:center;}
+.gauge-label{font-size:.58rem;color:var(--muted);margin-top:3px;letter-spacing:1px;text-transform:uppercase;}
+
+/* HOURLY */
+.ht-wrap{overflow-x:auto;max-height:260px;overflow-y:auto;}
+.ht-wrap::-webkit-scrollbar{width:3px;height:3px;}
+.ht-wrap::-webkit-scrollbar-thumb{background:var(--border);}
+table.ht{width:100%;border-collapse:collapse;font-size:.63rem;}
+table.ht thead th{background:var(--bg3);padding:5px 7px;color:var(--muted);letter-spacing:1px;
+  text-transform:uppercase;text-align:right;position:sticky;top:0;}
+table.ht thead th:first-child{text-align:left;}
+table.ht tbody tr{border-bottom:1px solid var(--border2);}
+table.ht tbody tr:hover{background:rgba(245,158,11,.03);}
+table.ht tbody td{padding:4px 7px;text-align:right;}
+table.ht tbody td:first-child{text-align:left;color:var(--muted2);}
+.mbar{height:3px;border-radius:2px;background:var(--amber-glow);}
+.mbar-f{height:100%;border-radius:2px;background:var(--amber);}
+
+/* CO2 */
+.co2-items{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:8px;}
+.co2-item{background:var(--bg3);border-radius:7px;padding:10px;text-align:center;border:1px solid var(--border2);}
+.co2-val{font-family:'Syne',sans-serif;font-size:1.2rem;font-weight:800;color:var(--emerald);}
+.co2-lbl{font-size:.55rem;color:var(--muted);margin-top:3px;letter-spacing:1px;text-transform:uppercase;}
+
+/* LOAN RESULT PANEL */
+.loan-summary{background:linear-gradient(135deg,rgba(139,92,246,.08),rgba(59,130,246,.05));
+  border:1px solid rgba(139,92,246,.2);border-radius:9px;padding:1.1rem;margin-bottom:.9rem;}
+.loan-kgrid{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-bottom:1rem;}
+.lk{background:rgba(0,0,0,.3);border:1px solid rgba(139,92,246,.2);border-radius:6px;padding:10px;text-align:center;}
+.lkv{font-family:'Syne',sans-serif;font-size:1.1rem;font-weight:800;color:var(--violet);}
+.lku{font-size:.55rem;color:var(--muted);margin-top:2px;}
+.lkl{font-size:.55rem;color:var(--muted2);text-transform:uppercase;letter-spacing:1px;margin-top:4px;}
+
+/* AMORTIZATION */
+.amort-wrap{max-height:260px;overflow-y:auto;}
+.amort-wrap::-webkit-scrollbar{width:3px;}
+.amort-wrap::-webkit-scrollbar-thumb{background:var(--border);}
+
+/* spinner */
+.spin{display:inline-block;width:11px;height:11px;border:2px solid rgba(20,184,166,.3);
+  border-top-color:var(--teal);border-radius:50%;animation:sp .8s linear infinite;}
+@keyframes sp{to{transform:rotate(360deg);}}
+
+/* tooltip */
+.tt-wrap{position:relative;}
+.tt-wrap:hover .tt{opacity:1;transform:translateY(-4px);}
+.tt{position:absolute;bottom:calc(100% + 5px);left:50%;transform:translateX(-50%) translateY(0);
+  background:var(--panel2);border:1px solid var(--border);border-radius:4px;
+  padding:4px 7px;font-size:.6rem;color:var(--text);white-space:nowrap;opacity:0;transition:all .15s;
+  pointer-events:none;z-index:999;}
+
+/* RESPONSIVE */
+@media(max-width:1100px){.sb{width:295px;}.kgrid-6{grid-template-columns:repeat(3,1fr);}.loan-kgrid{grid-template-columns:repeat(3,1fr);}}
+@media(max-width:768px){.wrap{flex-direction:column;}.sb{width:100%;height:auto;position:static;}.kgrid-6,.kgrid-4,.kgrid-5{grid-template-columns:repeat(2,1fr);}.loan-kgrid{grid-template-columns:repeat(2,1fr);}}
+</style>
+</head>
+<body>
+<div class="app">
+
+<!-- HEADER -->
+<header>
+  <div class="logo">
+    <div class="logo-sun"></div>
+    <div>
+      <div class="logo-text">Solar<span>Yield</span> India</div>
+      <div class="logo-sub">Advanced PV Dashboard v2.0</div>
+    </div>
+  </div>
+  <div class="hdr-right">
+    <div id="api-badge"><div class="dot warn"></div><span id="api-txt">NASA POWER: Ready</span></div>
+    <button class="hbtn" onclick="exportPDF()">⬇ PDF Report</button>
+    <button class="hbtn primary" onclick="calculateAll()">⚡ Calculate</button>
+  </div>
+</header>
+
+<!-- STATUS BAR -->
+<div class="sbar">
+  <div class="si"><div class="dot on"></div><span>System Ready</span></div>
+  <div class="si"><div class="dot" id="sd-loc"></div><span id="st-loc">Location: Not Set</span></div>
+  <div class="si"><div class="dot" id="sd-irr"></div><span id="st-irr">Irradiance: Built-in DB</span></div>
+  <div class="si"><div class="dot" id="sd-tariff"></div><span id="st-tariff">Tariff: Manual</span></div>
+  <div class="si"><div class="dot" id="sd-loan"></div><span id="st-loan">Loan: Disabled</span></div>
+  <div class="si"><div class="dot"></div><span id="st-cap">Capacity: —</span></div>
+</div>
+
+<div class="wrap">
+<!-- ═══════════════ SIDEBAR ═══════════════ -->
+<aside class="sb">
+
+  <!-- LOCATION -->
+  <div class="ss">
+    <div class="st">📍 Location</div>
+    <label>City / Town</label>
+    <select id="city" onchange="onCityChange()">
+      <option value="">— Select City —</option>
+      <option value="custom">📌 Enter Coordinates</option>
+      <optgroup label="North India">
+        <option value="delhi">New Delhi (Delhi)</option>
+        <option value="chandigarh">Chandigarh (Punjab/Haryana)</option>
+        <option value="jaipur">Jaipur (Rajasthan)</option>
+        <option value="lucknow">Lucknow (Uttar Pradesh)</option>
+        <option value="amritsar">Amritsar (Punjab)</option>
+        <option value="jodhpur">Jodhpur (Rajasthan)</option>
+        <option value="shimla">Shimla (Himachal Pradesh)</option>
+      </optgroup>
+      <optgroup label="West India">
+        <option value="mumbai">Mumbai (Maharashtra)</option>
+        <option value="pune">Pune (Maharashtra)</option>
+        <option value="ahmedabad">Ahmedabad (Gujarat)</option>
+        <option value="surat">Surat (Gujarat)</option>
+        <option value="nagpur">Nagpur (Maharashtra)</option>
+      </optgroup>
+      <optgroup label="South India">
+        <option value="bengaluru">Bengaluru (Karnataka)</option>
+        <option value="chennai">Chennai (Tamil Nadu)</option>
+        <option value="hyderabad">Hyderabad (Telangana)</option>
+        <option value="kochi">Kochi (Kerala)</option>
+        <option value="thiruvananthapuram">Thiruvananthapuram (Kerala)</option>
+        <option value="coimbatore">Coimbatore (Tamil Nadu)</option>
+        <option value="visakhapatnam">Visakhapatnam (Andhra Pradesh)</option>
+      </optgroup>
+      <optgroup label="East & NE India">
+        <option value="kolkata">Kolkata (West Bengal)</option>
+        <option value="bhubaneswar">Bhubaneswar (Odisha)</option>
+        <option value="patna">Patna (Bihar)</option>
+        <option value="guwahati">Guwahati (Assam)</option>
+      </optgroup>
+      <optgroup label="Central India">
+        <option value="bhopal">Bhopal (Madhya Pradesh)</option>
+        <option value="indore">Indore (Madhya Pradesh)</option>
+        <option value="raipur">Raipur (Chhattisgarh)</option>
+      </optgroup>
+    </select>
+
+    <div id="coord-sec" style="display:none">
+      <div class="g2">
+        <div><label>Latitude °N</label><input type="number" id="lat" placeholder="19.07" step="0.01"></div>
+        <div><label>Longitude °E</label><input type="number" id="lon" placeholder="72.87" step="0.01"></div>
+      </div>
+    </div>
+
+    <!-- Tariff Display -->
+    <div id="tariff-display" class="tariff-box" style="display:none">
+      <div class="tb-row"><span class="tb-label">Import (₹/kWh)</span><span class="tb-val import" id="td-import">—</span></div>
+      <div class="tb-row"><span class="tb-label">Export FiT (₹/kWh)</span><span class="tb-val export" id="td-export">—</span></div>
+      <div class="tb-source" id="td-source">—</div>
+    </div>
+
+    <button class="fbtn" id="fetch-btn" onclick="fetchNASA()">
+      <span id="fi">🛰</span><span id="ft">Fetch NASA POWER Irradiance</span>
+    </button>
+    <div id="irr-msg" class="irr-msg warn"><span>⚡</span><span>Select city → Fetch for live irradiance</span></div>
+  </div>
+
+  <!-- PV SYSTEM -->
+  <div class="ss">
+    <div class="st">⚡ PV System</div>
+    <label>Solar Capacity (kWp)</label>
+    <input type="number" id="capacity" value="10" min=".1" step=".1">
+    <div class="g2">
+      <div><label>Panel Efficiency (%)</label><input type="number" id="panel-eff" value="20" min="5" max="30" step=".1"></div>
+      <div><label>System Losses (%)</label><input type="number" id="losses" value="14" min="0" max="40" step=".5"></div>
+    </div>
+  </div>
+
+  <!-- TILT -->
+  <div class="ss">
+    <div class="st">🧭 Tilt Angles</div>
+    <div class="compass-wrap">
+      <div class="compass"><div class="compass-ring">
+        <span class="cd N">N</span><span class="cd S">S</span>
+        <span class="cd E">E</span><span class="cd W">W</span>
+        <span class="cd C">☀<br>South<br>Best</span>
+      </div></div>
+    </div>
+    <div class="g2">
+      <div><label>North (°)</label><input type="number" id="tn" value="0" min="0" max="90"></div>
+      <div><label>South (°)</label><input type="number" id="ts" value="20" min="0" max="90"></div>
+      <div><label>East (°)</label><input type="number" id="te" value="0" min="0" max="90"></div>
+      <div><label>West (°)</label><input type="number" id="tw" value="0" min="0" max="90"></div>
+    </div>
+  </div>
+
+  <!-- INVERTER -->
+  <div class="ss">
+    <div class="st">🔁 Inverter</div>
+    <div class="g2">
+      <div><label>Size (kVA)</label><input type="number" id="inv-size" value="10" min=".1" step=".1"></div>
+      <div><label>Efficiency (%)</label><input type="number" id="inv-eff" value="97" min="50" max="100" step=".1"></div>
+    </div>
+  </div>
+
+  <!-- LOAD & STORAGE -->
+  <div class="ss">
+    <div class="st">🔋 Load & Storage</div>
+    <div class="g2">
+      <div><label>Daily Load (kWh)</label><input type="number" id="load" value="30" min="0" step=".5"></div>
+      <div><label>Battery (kWh)</label><input type="number" id="battery" value="0" min="0" step=".5"></div>
+    </div>
+    <label>Load Profile</label>
+    <select id="load-profile">
+      <option value="residential">Residential</option>
+      <option value="commercial">Commercial</option>
+      <option value="industrial">Industrial</option>
+      <option value="flat">Flat (Constant)</option>
+    </select>
+  </div>
+
+  <!-- TARIFF (Manual Override) -->
+  <div class="ss">
+    <div class="st">₹ Electricity Tariff</div>
+    <div style="font-size:.58rem;color:var(--muted);margin-bottom:6px">Auto-filled from city DB. Override if needed.</div>
+    <div class="g2">
+      <div><label>Import Rate (₹/kWh)</label><input type="number" id="tariff" value="8.0" step=".1" min="0"></div>
+      <div><label>Export FiT (₹/kWh)</label><input type="number" id="export-rate" value="3.5" step=".1" min="0"></div>
+    </div>
+    <label>Annual Tariff Escalation (%)</label>
+    <input type="number" id="tariff-esc" value="3.0" step=".5" min="0" max="15">
+  </div>
+
+  <!-- FINANCIALS -->
+  <div class="ss">
+    <div class="st">📊 Project Cost</div>
+    <div class="g2">
+      <div><label>Install Cost (₹/kWp)</label><input type="number" id="install-cost" value="45000" step="1000"></div>
+      <div><label>Annual O&M (₹)</label><input type="number" id="om-cost" value="5000" step="500"></div>
+    </div>
+    <div class="g2">
+      <div><label>Subsidy (₹)</label><input type="number" id="subsidy" value="0" step="1000" placeholder="0"></div>
+      <div><label>Degradation (%/yr)</label><input type="number" id="degradation" value="0.7" step=".1" min="0" max="5"></div>
+    </div>
+  </div>
+
+  <!-- BANK LOAN -->
+  <div class="ss">
+    <div class="st">🏦 Bank Loan</div>
+    <div class="loan-toggle" onclick="toggleLoan()">
+      <div class="toggle-sw" id="loan-sw"><div class="toggle-knob"></div></div>
+      <span class="toggle-label">Enable Loan Financing</span>
+    </div>
+
+    <div class="loan-fields" id="loan-fields">
+      <label>Bank / Lender</label>
+      <select id="bank" onchange="bankChanged()">
+        <option value="sbi-surya">SBI Surya Ghar (≤3kW: 7% | 3-10kW: 9.15%)</option>
+        <option value="sbi-hl">SBI (Home Loan customer: 9.15%)</option>
+        <option value="sbi-non">SBI (Non-HL customer: 10.15%)</option>
+        <option value="pnb">Punjab National Bank (~9.5%)</option>
+        <option value="bob">Bank of Baroda (~10.0%)</option>
+        <option value="idbi">IDBI Surya Shakti (~10.5%)</option>
+        <option value="union">Union Bank of India (~10.0%)</option>
+        <option value="icici">ICICI Bank (~11.0%)</option>
+        <option value="hdfc">HDFC Bank (~11.5%)</option>
+        <option value="custom">Custom Rate</option>
+      </select>
+
+      <div class="g2">
+        <div><label>Loan Amount (₹)</label><input type="number" id="loan-amt" placeholder="Auto" step="5000" oninput="updateEMIPreview()"></div>
+        <div><label>Interest Rate (% p.a.)</label><input type="number" id="loan-rate" value="9.15" step=".05" min="1" max="25" oninput="updateEMIPreview()"></div>
+      </div>
+      <div class="g2">
+        <div><label>Tenure (Years)</label><input type="number" id="loan-tenure" value="7" min="1" max="15" oninput="updateEMIPreview()"></div>
+        <div><label>Down Payment (%)</label><input type="number" id="down-pct" value="20" min="0" max="80" step="5" oninput="updateEMIPreview()"></div>
+      </div>
+      <label>Moratorium Period (months)</label>
+      <input type="number" id="moratorium" value="0" min="0" max="12" oninput="updateEMIPreview()">
+
+      <div class="emi-preview" id="emi-preview">
+        <div class="emi-row"><span style="color:var(--muted)">Loan Amount</span><span class="emi-val" id="ep-loan">—</span></div>
+        <div class="emi-row"><span style="color:var(--muted)">Down Payment</span><span class="emi-val" id="ep-down">—</span></div>
+        <div class="emi-row"><span style="color:var(--muted)">Monthly EMI</span><span class="emi-val" id="ep-emi">—</span></div>
+        <div class="emi-row"><span style="color:var(--muted)">Total Interest</span><span class="emi-val" id="ep-int">—</span></div>
+        <div class="emi-row"><span style="color:var(--muted)">Total Outflow</span><span class="emi-val total" id="ep-total">—</span></div>
+      </div>
+    </div>
+  </div>
+
+  <button class="calc-btn" onclick="calculateAll()">⚡ Calculate Yield & ROI</button>
+</aside>
+
+<!-- ═══════════════ CONTENT ═══════════════ -->
+<div class="content" id="content-area">
+
+  <div id="placeholder" class="placeholder">
+    <div class="ph-sun">☀</div>
+    <div style="font-family:'Syne',sans-serif;font-size:1.3rem;font-weight:700;letter-spacing:2px">Configure & Calculate</div>
+    <div style="font-size:.7rem;max-width:260px;line-height:1.8">Set parameters → Click Calculate to generate full PV yield + financial report with bank loan analysis</div>
+  </div>
+
+  <div id="results" style="display:none">
+
+    <div class="tabs">
+      <div class="tab active" onclick="sw('overview')">Overview</div>
+      <div class="tab" onclick="sw('hourly')">Hourly Profile</div>
+      <div class="tab" onclick="sw('financial')">Financial ROI</div>
+      <div class="tab" onclick="sw('loan-tab')">Loan Analysis</div>
+      <div class="tab" onclick="sw('co2')">CO₂ Impact</div>
+    </div>
+
+    <!-- ── OVERVIEW ── -->
+    <div class="tp active" id="tab-overview">
+      <div class="kgrid kgrid-6">
+        <div class="kpi amber"><div class="kval amber" id="k-daily">—</div><div class="kunit">kWh/day</div><div class="klabel">Daily PV Yield</div></div>
+        <div class="kpi teal"><div class="kval teal" id="k-annual">—</div><div class="kunit">kWh/yr</div><div class="klabel">Annual Yield</div></div>
+        <div class="kpi emerald"><div class="kval emerald" id="k-pr">—</div><div class="kunit">%</div><div class="klabel">Perf. Ratio</div></div>
+        <div class="kpi blue"><div class="kval blue" id="k-bat">—</div><div class="kunit">kWh/day</div><div class="klabel">Battery Charged</div></div>
+        <div class="kpi orange"><div class="kval orange" id="k-grid">—</div><div class="kunit">kWh/day</div><div class="klabel">Grid Export</div></div>
+        <div class="kpi red"><div class="kval red" id="k-self">—</div><div class="kunit">%</div><div class="klabel">Self Consump.</div></div>
+      </div>
+
+      <div class="panel">
+        <div class="ph"><div class="pt">⚡ Energy Flow Diagram</div><div class="pbadge" id="flow-badge">Daily Avg</div></div>
+        <div class="flow-wrap">
+          <div class="flow-diag">
+            <div class="fn"><div class="fb solar"><div class="fbv" id="f-pv">—</div><div>Solar PV</div></div><div class="fn-lbl">DC Gen.</div></div>
+            <div class="fa on" id="fa1"><div class="al"></div><div class="av" id="fv1">—</div></div>
+            <div class="fn"><div class="fb inv"><div class="fbv" id="f-inv">—</div><div>Inverter</div></div><div class="fn-lbl">AC Out</div></div>
+            <div class="fa on" id="fa2"><div class="al"></div><div class="av" id="fv2">—</div></div>
+            <div class="fn"><div class="fb load"><div class="fbv" id="f-load">—</div><div>Load</div></div><div class="fn-lbl">Consump.</div></div>
+            <div class="fa" id="fa3"><div class="al"></div><div class="av" id="fv3">—</div></div>
+            <div class="fn"><div class="fb bat"><div class="fbv" id="f-bat">—</div><div>Battery</div></div><div class="fn-lbl">Storage</div></div>
+            <div class="fa" id="fa4"><div class="al"></div><div class="av" id="fv4">—</div></div>
+            <div class="fn"><div class="fb grid"><div class="fbv" id="f-grid">—</div><div>Grid</div></div><div class="fn-lbl">Export</div></div>
+          </div>
+        </div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:2fr 1fr;gap:.9rem">
+        <div class="panel">
+          <div class="ph"><div class="pt">📊 Monthly Yield</div><div class="pbadge" id="irr-src-badge">Built-in DB</div></div>
+          <div class="chart-bars" id="monthly-chart"></div>
+          <div class="cleg">
+            <div class="li"><div class="ld" style="background:var(--amber)"></div>PV Yield</div>
+            <div class="li"><div class="ld" style="background:var(--emerald)"></div>Self-consumed</div>
+            <div class="li"><div class="ld" style="background:var(--orange)"></div>Grid Export</div>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="ph"><div class="pt">System KPIs</div></div>
+          <div class="gauge-row" id="gauges"></div>
+        </div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:.9rem;margin-top:.9rem">
+        <div class="panel"><div class="ph"><div class="pt">Losses Breakdown</div></div><table class="dt" id="losses-tbl"></table></div>
+        <div class="panel"><div class="ph"><div class="pt">Location & Irradiance</div></div><table class="dt" id="irr-tbl"></table></div>
+      </div>
+    </div>
+
+    <!-- ── HOURLY ── -->
+    <div class="tp" id="tab-hourly">
+      <div class="panel">
+        <div class="ph">
+          <div class="pt">24-Hour Generation & Load</div>
+          <select id="hourly-month" onchange="renderHourly()" style="width:auto;padding:4px 8px;font-size:.65rem">
+            <option value="-1">Annual Average</option>
+            <option value="0">January</option><option value="1">February</option><option value="2">March</option>
+            <option value="3">April</option><option value="4">May</option><option value="5">June</option>
+            <option value="6">July</option><option value="7">August</option><option value="8">September</option>
+            <option value="9">October</option><option value="10">November</option><option value="11">December</option>
+          </select>
+        </div>
+        <canvas id="hourly-canvas" height="170" style="width:100%;display:block"></canvas>
+        <div class="cleg" style="margin-top:8px">
+          <div class="li"><div class="ld" style="background:var(--amber)"></div>Solar (kW)</div>
+          <div class="li"><div class="ld" style="background:var(--emerald)"></div>Load (kW)</div>
+          <div class="li"><div class="ld" style="background:var(--blue)"></div>Battery (kW)</div>
+          <div class="li"><div class="ld" style="background:var(--orange)"></div>Grid Export (kW)</div>
+        </div>
+      </div>
+      <div class="panel" style="margin-top:.9rem">
+        <div class="ph"><div class="pt">Hourly Breakdown</div></div>
+        <div class="ht-wrap"><table class="ht" id="hourly-tbl"></table></div>
+      </div>
+    </div>
+
+    <!-- ── FINANCIAL ROI ── -->
+    <div class="tp" id="tab-financial">
+      <div class="kgrid kgrid-5">
+        <div class="kpi amber"><div class="kval amber" id="k-savings">—</div><div class="kunit">₹/year</div><div class="klabel">Annual Savings</div></div>
+        <div class="kpi emerald"><div class="kval emerald" id="k-payback">—</div><div class="kunit">years</div><div class="klabel">Payback Period</div></div>
+        <div class="kpi teal"><div class="kval teal" id="k-roi">—</div><div class="kunit">% (25yr)</div><div class="klabel">Total ROI</div></div>
+        <div class="kpi orange"><div class="kval orange" id="k-lcoe">—</div><div class="kunit">₹/kWh</div><div class="klabel">LCOE</div></div>
+        <div class="kpi violet"><div class="kval violet" id="k-irr">—</div><div class="kunit">% IRR</div><div class="klabel">Internal Rate</div></div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1.4fr 1fr;gap:.9rem">
+        <div class="panel">
+          <div class="ph"><div class="pt">25-Year Cash Flow</div><div class="pbadge" id="cf-badge">With Tariff Escalation</div></div>
+          <canvas id="cashflow-canvas" height="170" style="width:100%;display:block"></canvas>
+        </div>
+        <div class="panel">
+          <div class="ph"><div class="pt">Financial Summary</div></div>
+          <table class="dt" id="fin-tbl"></table>
+        </div>
+      </div>
+
+      <div class="panel" style="margin-top:.9rem">
+        <div class="ph"><div class="pt">Year-by-Year Revenue</div></div>
+        <div class="ht-wrap"><table class="ht" id="yearly-tbl"></table></div>
+      </div>
+    </div>
+
+    <!-- ── LOAN ANALYSIS ── -->
+    <div class="tp" id="tab-loan-tab">
+      <div id="no-loan-msg" style="display:none" class="placeholder" style="height:200px">
+        <div style="font-size:2rem;opacity:.3">🏦</div>
+        <div style="font-family:'Syne',sans-serif;font-size:1rem;letter-spacing:2px">Loan Not Enabled</div>
+        <div style="font-size:.7rem;color:var(--muted)">Enable Bank Loan in the sidebar to see loan analysis</div>
+      </div>
+
+      <div id="loan-result" style="display:none">
+        <!-- Loan KPIs -->
+        <div class="loan-summary">
+          <div class="ph"><div class="pt" style="color:var(--violet)">🏦 Loan Financing Summary</div><div class="pbadge" id="bank-badge">—</div></div>
+          <div class="loan-kgrid">
+            <div class="lk"><div class="lkv" id="lk-emi">—</div><div class="lku">₹/month</div><div class="lkl">Monthly EMI</div></div>
+            <div class="lk"><div class="lkv" id="lk-down">—</div><div class="lku">₹</div><div class="lkl">Down Payment</div></div>
+            <div class="lk"><div class="lkv" id="lk-int">—</div><div class="lku">₹ total</div><div class="lkl">Total Interest</div></div>
+            <div class="lk"><div class="lkv" id="lk-payback-loan">—</div><div class="lku">years</div><div class="lkl">Payback (w/ Loan)</div></div>
+            <div class="lk"><div class="lkv" id="lk-netprofit">—</div><div class="lku">₹ (25yr)</div><div class="lkl">Net Profit</div></div>
+          </div>
+
+          <!-- Loan vs Cash comparison -->
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:.9rem">
+            <div>
+              <div style="font-size:.6rem;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-bottom:6px">Loan Scenario</div>
+              <table class="dt" id="loan-tbl"></table>
+            </div>
+            <div>
+              <div style="font-size:.6rem;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-bottom:6px">Cash Purchase vs Loan</div>
+              <table class="dt" id="compare-tbl"></table>
+            </div>
+          </div>
+        </div>
+
+        <div style="display:grid;grid-template-columns:1.3fr 1fr;gap:.9rem">
+          <div class="panel">
+            <div class="ph"><div class="pt">Cumulative Cash Flow: Loan vs Cash</div></div>
+            <canvas id="loan-cf-canvas" height="170" style="width:100%;display:block"></canvas>
+            <div class="cleg" style="margin-top:6px">
+              <div class="li"><div class="ld" style="background:var(--violet)"></div>With Loan</div>
+              <div class="li"><div class="ld" style="background:var(--emerald)"></div>Cash Purchase</div>
+              <div class="li"><div class="ld" style="background:var(--orange)"></div>Break-even</div>
+            </div>
+          </div>
+          <div class="panel">
+            <div class="ph"><div class="pt">Annual Net Benefit (Savings - EMI)</div></div>
+            <canvas id="loan-bar-canvas" height="170" style="width:100%;display:block"></canvas>
+          </div>
+        </div>
+
+        <div class="panel" style="margin-top:.9rem">
+          <div class="ph"><div class="pt">Loan Amortization Schedule</div></div>
+          <div class="amort-wrap"><table class="ht" id="amort-tbl"></table></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── CO2 ── -->
+    <div class="tp" id="tab-co2">
+      <div class="kgrid kgrid-4">
+        <div class="kpi emerald"><div class="kval emerald" id="k-co2yr">—</div><div class="kunit">tonnes CO₂/yr</div><div class="klabel">Annual Avoided</div></div>
+        <div class="kpi teal"><div class="kval teal" id="k-co225">—</div><div class="kunit">tonnes CO₂</div><div class="klabel">25-Year Total</div></div>
+        <div class="kpi amber"><div class="kval amber" id="k-trees">—</div><div class="kunit">trees equiv.</div><div class="klabel">Equivalent Trees</div></div>
+        <div class="kpi blue"><div class="kval blue" id="k-homes">—</div><div class="kunit">homes/year</div><div class="klabel">Homes Powered</div></div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:.9rem">
+        <div class="panel">
+          <div class="ph"><div class="pt">Environmental Equivalents</div></div>
+          <div class="co2-items" id="co2-items"></div>
+        </div>
+        <div class="panel">
+          <div class="ph"><div class="pt">Cumulative CO₂ Avoided (25yr)</div></div>
+          <canvas id="co2-canvas" height="170" style="width:100%;display:block"></canvas>
+        </div>
+      </div>
+      <div class="panel" style="margin-top:.9rem">
+        <div class="ph"><div class="pt">India Grid Emission Reference (CEA 2023-24)</div></div>
+        <table class="dt">
+          <tr><td>India National Grid EF</td><td class="emerald">0.716 kg CO₂/kWh</td></tr>
+          <tr><td>Southern Region Grid</td><td>~0.68 kg CO₂/kWh</td></tr>
+          <tr><td>Western Region Grid</td><td>~0.74 kg CO₂/kWh</td></tr>
+          <tr><td>Northern Region Grid</td><td>~0.72 kg CO₂/kWh</td></tr>
+          <tr><td>Eastern Region Grid</td><td>~0.83 kg CO₂/kWh</td></tr>
+          <tr><td>Coal share in India grid</td><td>~73%</td></tr>
+        </table>
+      </div>
+    </div>
+
+  </div><!-- /results -->
+</div><!-- /content -->
+</div><!-- /wrap -->
+</div><!-- /app -->
+
+<script>
+// ═══════════════════════════════════════════════════════
+// DATA TABLES
+// ═══════════════════════════════════════════════════════
+
+// City DB: lat, lon, monthly GHI, state-code, state name
+const CITIES = {
+  delhi:       {n:'New Delhi',      lat:28.6,lon:77.2, ghi:[4.0,4.8,5.8,6.5,6.8,6.2,5.5,5.5,5.5,5.5,4.7,3.9], state:'DL'},
+  chandigarh:  {n:'Chandigarh',     lat:30.7,lon:76.8, ghi:[3.7,4.5,5.5,6.2,6.5,5.9,5.2,5.2,5.2,5.2,4.4,3.6], state:'PB'},
+  jaipur:      {n:'Jaipur',         lat:26.9,lon:75.8, ghi:[4.5,5.2,6.2,6.9,7.2,6.7,6.0,6.0,6.0,6.1,5.3,4.5], state:'RJ'},
+  lucknow:     {n:'Lucknow',        lat:26.8,lon:80.9, ghi:[3.9,4.8,5.8,6.5,6.7,6.1,5.3,5.3,5.3,5.4,4.6,3.8], state:'UP'},
+  amritsar:    {n:'Amritsar',       lat:31.6,lon:74.9, ghi:[3.5,4.3,5.4,6.2,6.5,6.0,5.4,5.3,5.2,5.0,4.2,3.4], state:'PB'},
+  jodhpur:     {n:'Jodhpur',        lat:26.3,lon:73.0, ghi:[4.8,5.5,6.5,7.2,7.5,7.0,6.2,6.2,6.3,6.3,5.6,4.8], state:'RJ'},
+  shimla:      {n:'Shimla',         lat:31.1,lon:77.2, ghi:[3.2,4.0,5.0,5.8,6.2,5.7,5.0,4.9,4.8,4.7,4.0,3.1], state:'HP'},
+  mumbai:      {n:'Mumbai',         lat:19.1,lon:72.9, ghi:[5.5,6.1,6.7,6.9,6.1,4.5,4.2,4.3,5.0,6.1,5.9,5.3], state:'MH'},
+  pune:        {n:'Pune',           lat:18.5,lon:73.9, ghi:[5.7,6.3,6.9,7.0,6.3,4.7,4.4,4.5,5.2,6.2,6.0,5.5], state:'MH'},
+  ahmedabad:   {n:'Ahmedabad',      lat:23.0,lon:72.6, ghi:[5.2,5.9,6.7,7.1,7.0,5.8,5.0,5.1,5.7,6.3,5.8,5.0], state:'GJ'},
+  surat:       {n:'Surat',          lat:21.2,lon:72.8, ghi:[5.3,6.0,6.8,7.0,6.6,5.2,4.8,4.9,5.6,6.2,5.9,5.1], state:'GJ'},
+  nagpur:      {n:'Nagpur',         lat:21.1,lon:79.1, ghi:[5.5,6.2,7.0,7.3,7.1,5.6,4.8,4.9,5.6,6.3,6.0,5.4], state:'MH'},
+  bengaluru:   {n:'Bengaluru',      lat:12.9,lon:77.6, ghi:[5.7,6.2,6.5,6.3,5.8,4.9,4.6,4.7,5.0,5.5,5.5,5.4], state:'KA'},
+  chennai:     {n:'Chennai',        lat:13.1,lon:80.3, ghi:[5.8,6.4,6.8,7.0,6.5,5.3,5.0,5.1,5.5,5.8,5.5,5.3], state:'TN'},
+  hyderabad:   {n:'Hyderabad',      lat:17.4,lon:78.5, ghi:[5.6,6.2,6.8,7.1,6.8,5.5,5.0,5.1,5.6,6.0,5.8,5.4], state:'TS'},
+  kochi:       {n:'Kochi',          lat:9.9, lon:76.3, ghi:[6.1,6.6,6.7,6.2,5.4,4.0,3.9,4.0,4.8,5.5,5.7,5.9], state:'KL'},
+  thiruvananthapuram:{n:'Thiruvananthapuram',lat:8.5,lon:76.9,ghi:[6.2,6.7,6.8,6.3,5.5,4.1,4.0,4.1,4.9,5.6,5.8,6.0],state:'KL'},
+  coimbatore:  {n:'Coimbatore',     lat:11.0,lon:76.9, ghi:[5.9,6.4,6.7,6.5,6.0,4.8,4.5,4.6,5.1,5.7,5.6,5.6], state:'TN'},
+  visakhapatnam:{n:'Visakhapatnam', lat:17.7,lon:83.3, ghi:[5.5,6.1,6.7,6.9,6.5,4.9,4.7,4.8,5.3,5.8,5.6,5.2], state:'AP'},
+  kolkata:     {n:'Kolkata',        lat:22.6,lon:88.4, ghi:[4.2,5.0,5.9,6.3,6.1,4.8,4.3,4.4,5.0,5.6,5.0,4.3], state:'WB'},
+  bhubaneswar: {n:'Bhubaneswar',    lat:20.3,lon:85.8, ghi:[5.0,5.8,6.5,6.8,6.4,4.9,4.5,4.6,5.3,5.9,5.5,4.9], state:'OD'},
+  patna:       {n:'Patna',          lat:25.6,lon:85.1, ghi:[4.0,4.9,5.9,6.5,6.7,5.9,5.2,5.2,5.3,5.5,4.7,3.9], state:'BR'},
+  guwahati:    {n:'Guwahati',       lat:26.2,lon:91.7, ghi:[3.8,4.5,5.2,5.7,5.5,4.5,4.0,4.2,4.8,5.0,4.4,3.7], state:'AS'},
+  bhopal:      {n:'Bhopal',         lat:23.3,lon:77.4, ghi:[5.0,5.8,6.6,7.0,7.0,5.7,5.0,5.0,5.6,6.2,5.7,4.9], state:'MP'},
+  indore:      {n:'Indore',         lat:22.7,lon:75.9, ghi:[5.1,5.9,6.7,7.1,7.1,5.8,5.1,5.1,5.7,6.3,5.8,5.0], state:'MP'},
+  raipur:      {n:'Raipur',         lat:21.3,lon:81.6, ghi:[5.2,6.0,6.8,7.2,7.0,5.5,4.8,4.9,5.6,6.2,5.8,5.1], state:'CG'},
+};
+
+// State-wise electricity tariffs (import ₹/kWh avg residential, export FiT ₹/kWh, source)
+// Sources: State DISCOM tariff orders FY2024-25, SolarQuarter, CEA data
+const STATE_TARIFFS = {
+  DL:{n:'Delhi',       import:6.50, export:3.50, src:'DERC 2024-25. Export: BRPL/BYPL net-metering FiT'},
+  PB:{n:'Punjab',      import:5.00, export:2.65, src:'PSPCL FY2024-25. Export: net-metering @ ₹2.65/kWh'},
+  RJ:{n:'Rajasthan',   import:6.50, export:3.26, src:'JVVNL/AVVNL 2024-25. Export: revised net-metering FiT'},
+  UP:{n:'Uttar Pradesh',import:6.00,export:2.98, src:'UPPCL FY2024-25. Export: APPC + 25% incentive'},
+  HP:{n:'Himachal Pradesh',import:4.50,export:3.10,src:'HPSEBL 2024-25. Export: average FiT'},
+  MH:{n:'Maharashtra', import:9.00, export:2.90, src:'MSEDCL FY2024-25. Export: latest discovered solar tariff'},
+  GJ:{n:'Gujarat',     import:5.50, export:2.25, src:'GUVNL/GETCO 2024-25. Export: residential FiT (first 5yr)'},
+  KA:{n:'Karnataka',   import:6.50, export:3.82, src:'BESCOM FY2024-25. Export: generic tariff ≤10kW'},
+  TN:{n:'Tamil Nadu',  import:5.00, export:3.10, src:'TANGEDCO 2024-25. Export: net billing FiT (up to 10kW)'},
+  TS:{n:'Telangana',   import:6.00, export:2.80, src:'TSSPDCL 2024-25. Export: APPC-based compensation'},
+  KL:{n:'Kerala',      import:5.50, export:3.15, src:'KSEB FY2023-24. Export: APPC rate'},
+  AP:{n:'Andhra Pradesh',import:6.00,export:2.09,src:'APEPDCL/APSPDCL 2024. Export: flat settlement rate'},
+  WB:{n:'West Bengal', import:7.50, export:2.09, src:'WBSEDCL 2024-25. Export: net billing rate'},
+  OD:{n:'Odisha',      import:5.50, export:3.10, src:'ODISHA DISCOM 2024-25. Average FiT'},
+  BR:{n:'Bihar',       import:6.50, export:3.11, src:'SBPDCL/NBPDCL FY2024-25. Export: fixed FiT (5yr)'},
+  AS:{n:'Assam',       import:6.00, export:5.33, src:'APDCL FY2024-25. Export: APPC rate (high due to grid mix)'},
+  MP:{n:'Madhya Pradesh',import:6.00,export:2.14,src:'MPPKVVCL 2024-25. Export: lowest discovered solar bid'},
+  CG:{n:'Chhattisgarh',import:5.50, export:2.80, src:'CSPDCL 2024-25. Average FiT'},
+};
+
+// Bank loan rates
+const BANKS = {
+  'sbi-surya': {name:'SBI Surya Ghar', rate:7.0,   note:'≤3kW: 7%, 3-10kW: 9.15%'},
+  'sbi-hl':    {name:'SBI (HL Customer)', rate:9.15, note:'EBLR+0%, Home Loan existing customers'},
+  'sbi-non':   {name:'SBI (Non-HL)',   rate:10.15, note:'EBLR+1%, Non-home loan customers'},
+  'pnb':       {name:'Punjab National Bank', rate:9.50, note:'PMSY scheme'},
+  'bob':       {name:'Bank of Baroda', rate:10.0,  note:'Green energy loan'},
+  'idbi':      {name:'IDBI Surya Shakti', rate:10.5, note:'No collateral up to ₹3L'},
+  'union':     {name:'Union Bank of India', rate:10.0, note:'Union Solar scheme'},
+  'icici':     {name:'ICICI Bank',     rate:11.0,  note:'Solar panel loan'},
+  'hdfc':      {name:'HDFC Bank',      rate:11.5,  note:'Home improvement loan for solar'},
+  'custom':    {name:'Custom Rate',    rate:10.0,  note:'User-defined rate'},
+};
+
+const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const DAYS = [31,28,31,30,31,30,31,31,30,31,30,31];
+const CO2_EF = 0.716;
+
+const PROFILES = {
+  residential:[.02,.02,.01,.01,.01,.02,.04,.06,.07,.06,.05,.05,.04,.04,.04,.05,.06,.07,.08,.07,.06,.05,.04,.03],
+  commercial: [.01,.01,.01,.01,.01,.01,.02,.04,.07,.09,.09,.09,.09,.09,.08,.08,.07,.06,.04,.03,.02,.02,.01,.01],
+  industrial: Array(24).fill(1/24).map((_,i)=>i>=6&&i<=22?0.048:0.022),
+  flat:       Array(24).fill(1/24)
+};
+const SOLAR_CURVE = [0,0,0,0,0,.01,.04,.08,.12,.15,.17,.17,.16,.15,.12,.08,.04,.01,0,0,0,0,0,0];
+
+let R=null, nasaGHI=null, nasaUsed=false, loanEnabled=false;
+
+// ══ CITY CHANGE ══
+function onCityChange(){
+  const v=document.getElementById('city').value;
+  document.getElementById('coord-sec').style.display=v==='custom'?'block':'none';
+  if(v&&v!=='custom'&&CITIES[v]){
+    const c=CITIES[v];
+    const st=STATE_TARIFFS[c.state];
+    if(st){
+      document.getElementById('tariff').value=st.import;
+      document.getElementById('export-rate').value=st.export;
+      document.getElementById('td-import').textContent='₹'+st.import+'/kWh';
+      document.getElementById('td-export').textContent='₹'+st.export+'/kWh';
+      document.getElementById('td-source').textContent=st.src;
+      document.getElementById('tariff-display').style.display='grid';
+      document.getElementById('st-tariff').textContent='Tariff: '+st.n+' (Auto)';
+      document.getElementById('sd-tariff').className='dot on';
+    }
+    // auto-set SBI loan rate based on capacity
+    bankChanged();
+    updateEMIPreview();
+  }
+}
+
+function bankChanged(){
+  const bk=document.getElementById('bank').value;
+  const cap=parseFloat(document.getElementById('capacity').value)||10;
+  let rate=BANKS[bk]?BANKS[bk].rate:10;
+  if(bk==='sbi-surya'){
+    rate=cap<=3?7.0:9.15;
+  }
+  if(bk!=='custom') document.getElementById('loan-rate').value=rate;
+  updateEMIPreview();
+}
+
+// ══ LOAN TOGGLE ══
+function toggleLoan(){
+  loanEnabled=!loanEnabled;
+  const sw=document.getElementById('loan-sw');
+  const fields=document.getElementById('loan-fields');
+  sw.classList.toggle('on',loanEnabled);
+  fields.classList.toggle('show',loanEnabled);
+  document.getElementById('st-loan').textContent=loanEnabled?'Loan: Enabled':'Loan: Disabled';
+  document.getElementById('sd-loan').className='dot '+(loanEnabled?'on':'');
+  if(loanEnabled) updateEMIPreview();
+}
+
+function calcEMI(principal,annualRate,months){
+  if(annualRate===0) return principal/months;
+  const r=annualRate/100/12;
+  return principal*r*Math.pow(1+r,months)/(Math.pow(1+r,months)-1);
+}
+
+function updateEMIPreview(){
+  if(!loanEnabled) return;
+  const cap=parseFloat(document.getElementById('capacity').value)||10;
+  const installCost=parseFloat(document.getElementById('install-cost').value)||45000;
+  const subsidy=parseFloat(document.getElementById('subsidy').value)||0;
+  const totalCost=cap*installCost - subsidy;
+  const downPct=(parseFloat(document.getElementById('down-pct').value)||20)/100;
+  const downAmt=totalCost*downPct;
+  const loanAmtInput=parseFloat(document.getElementById('loan-amt').value);
+  const loanAmt=loanAmtInput||Math.round(totalCost*(1-downPct));
+  const rate=parseFloat(document.getElementById('loan-rate').value)||9.15;
+  const tenure=parseInt(document.getElementById('loan-tenure').value)||7;
+  const months=tenure*12;
+  const emi=calcEMI(loanAmt,rate,months);
+  const totalPay=emi*months;
+  const totalInt=totalPay-loanAmt;
+
+  document.getElementById('ep-loan').textContent='₹'+Math.round(loanAmt).toLocaleString('en-IN');
+  document.getElementById('ep-down').textContent='₹'+Math.round(downAmt).toLocaleString('en-IN');
+  document.getElementById('ep-emi').textContent='₹'+Math.round(emi).toLocaleString('en-IN');
+  document.getElementById('ep-int').textContent='₹'+Math.round(totalInt).toLocaleString('en-IN');
+  document.getElementById('ep-total').textContent='₹'+Math.round(totalPay+downAmt).toLocaleString('en-IN');
+}
+
+// ══ NASA POWER ══
+async function fetchNASA(){
+  const ck=document.getElementById('city').value;
+  let lat,lon;
+  if(ck&&ck!=='custom'&&CITIES[ck]){lat=CITIES[ck].lat;lon=CITIES[ck].lon;}
+  else{lat=parseFloat(document.getElementById('lat').value);lon=parseFloat(document.getElementById('lon').value);}
+  if(isNaN(lat)||isNaN(lon)){showIrrMsg('err','Select city or enter coordinates first');return;}
+  const btn=document.getElementById('fetch-btn');
+  const fi=document.getElementById('fi'); const ft=document.getElementById('ft');
+  btn.classList.add('loading');
+  fi.innerHTML='<div class="spin"></div>';
+  ft.textContent='Fetching NASA POWER...';
+  document.getElementById('api-badge').innerHTML='<div class="dot warn" style="animation:blink .5s infinite"></div><span>Connecting...</span>';
+  try{
+    const url=`https://power.larc.nasa.gov/api/temporal/monthly/point?parameters=ALLSKY_SFC_SW_DWN&community=RE&longitude=${lon}&latitude=${lat}&format=JSON&start=2019&end=2023`;
+    const res=await fetch(url);
+    const data=await res.json();
+    const monthly=data.properties.parameter.ALLSKY_SFC_SW_DWN;
+    const years=Object.keys(monthly);
+    nasaGHI=Array(12).fill(0);
+    const cnts=Array(12).fill(0);
+    years.forEach(y=>{
+      for(let mi=0;mi<12;mi++){
+        const mk=String(mi+1).padStart(2,'0');
+        if(monthly[y]&&monthly[y][mk]&&monthly[y][mk]>0){nasaGHI[mi]+=monthly[y][mk];cnts[mi]++;}
+      }
+    });
+    nasaGHI=nasaGHI.map((v,i)=>cnts[i]>0?+(v/cnts[i]).toFixed(2):5.0);
+    nasaUsed=true;
+    showIrrMsg('ok',`✓ NASA live data for ${lat.toFixed(2)}°N, ${lon.toFixed(2)}°E (2019–2023 avg)`);
+    document.getElementById('api-badge').innerHTML='<div class="dot on"></div><span id="api-txt">NASA POWER: Live</span>';
+    document.getElementById('st-irr').textContent='Irradiance: NASA POWER Live';
+    document.getElementById('sd-irr').className='dot on';
+  }catch(e){
+    nasaGHI=null;nasaUsed=false;
+    showIrrMsg('err','NASA API unavailable — using built-in database');
+    document.getElementById('api-badge').innerHTML='<div class="dot warn"></div><span>NASA: Offline</span>';
+  }finally{
+    btn.classList.remove('loading');
+    fi.textContent='🛰';
+    ft.textContent=nasaUsed?'✓ NASA Loaded — Refetch':'Retry NASA Fetch';
+  }
+}
+
+function showIrrMsg(type,msg){
+  const el=document.getElementById('irr-msg');
+  el.className='irr-msg '+type;
+  el.innerHTML=`<span>${type==='ok'?'✓':type==='err'?'✗':'⚡'}</span><span>${msg}</span>`;
+}
+
+// ══ TILT FACTOR ══
+function tiltFactor(tilt,lat,orient){
+  const opt=Math.abs(lat);
+  if(orient==='S') return Math.max(0.6,1.0-Math.abs(tilt-opt)*0.004);
+  if(orient==='N') return Math.max(0.3,0.55-tilt*0.003);
+  return Math.max(0.5,0.85-Math.abs(tilt-opt*0.7)*0.003);
+}
+
+// ══ MAIN CALCULATE ══
+function calculateAll(){
+  const ck=document.getElementById('city').value;
+  let city=CITIES[ck]||null;
+  let lat=city?city.lat:parseFloat(document.getElementById('lat').value)||20;
+  let lon=city?city.lon:parseFloat(document.getElementById('lon').value)||78;
+  if(ck==='custom'){lat=parseFloat(document.getElementById('lat').value)||20;lon=parseFloat(document.getElementById('lon').value)||78;}
+  const locName=city?city.n:`${lat.toFixed(2)}°N, ${lon.toFixed(2)}°E`;
+
+  const cap=parseFloat(document.getElementById('capacity').value)||10;
+  const lossP=parseFloat(document.getElementById('losses').value)/100||.14;
+  const tn=parseFloat(document.getElementById('tn').value)||0;
+  const ts=parseFloat(document.getElementById('ts').value)||0;
+  const te=parseFloat(document.getElementById('te').value)||0;
+  const tw=parseFloat(document.getElementById('tw').value)||0;
+  const invSize=parseFloat(document.getElementById('inv-size').value)||cap;
+  const invEff=parseFloat(document.getElementById('inv-eff').value)/100||.97;
+  const loadDaily=parseFloat(document.getElementById('load').value)||0;
+  const battCap=parseFloat(document.getElementById('battery').value)||0;
+  const profileKey=document.getElementById('load-profile').value;
+  const tariff=parseFloat(document.getElementById('tariff').value)||8;
+  const exportRate=parseFloat(document.getElementById('export-rate').value)||3.5;
+  const tariffEsc=parseFloat(document.getElementById('tariff-esc').value)/100||0.03;
+  const installCost=parseFloat(document.getElementById('install-cost').value)||45000;
+  const omCost=parseFloat(document.getElementById('om-cost').value)||5000;
+  const subsidy=parseFloat(document.getElementById('subsidy').value)||0;
+  const degradation=parseFloat(document.getElementById('degradation').value)/100||.007;
+
+  // Loan params
+  const loanAmt=loanEnabled?parseFloat(document.getElementById('loan-amt').value)||((cap*installCost-subsidy)*(1-(parseFloat(document.getElementById('down-pct').value)||20)/100)):0;
+  const loanRate=loanEnabled?parseFloat(document.getElementById('loan-rate').value)||9.15:0;
+  const loanTenure=loanEnabled?parseInt(document.getElementById('loan-tenure').value)||7:0;
+  const moratorium=loanEnabled?parseInt(document.getElementById('moratorium').value)||0:0;
+  const downAmt=loanEnabled?((cap*installCost-subsidy)*(parseFloat(document.getElementById('down-pct').value)||20)/100):0;
+  const bankKey=loanEnabled?document.getElementById('bank').value:'';
+  const bankName=BANKS[bankKey]?BANKS[bankKey].name:'';
+
+  // Tilt
+  const tot=tn+ts+te+tw||1;
+  const clampTF=Math.max(0.3,Math.min(1.05,
+    (tn/tot)*tiltFactor(tn,lat,'N')+(ts/tot)*tiltFactor(ts,lat,'S')+
+    (te/tot)*tiltFactor(te,lat,'E')+(tw/tot)*tiltFactor(tw,lat,'W')));
+
+  const ghi=nasaUsed&&nasaGHI?nasaGHI:(city?city.ghi:Array(12).fill(5.0));
+  const avgGHI=ghi.reduce((a,b)=>a+b,0)/12;
+
+  // Monthly yield
+  const monthlyAC=MONTHS.map((_,i)=>{
+    const dc=cap*ghi[i]*clampTF*(1-lossP);
+    const ac=Math.min(dc*invEff,invSize*8);
+    return ac*DAYS[i];
+  });
+  const annualYield=monthlyAC.reduce((a,b)=>a+b,0);
+  const dailyYield=annualYield/365;
+  const PR=Math.min(99,(dailyYield/(cap*avgGHI))*100);
+
+  // Energy flow
+  const pvDC=dailyYield/invEff;
+  const invOut=dailyYield;
+  const toLoad=Math.min(invOut,loadDaily);
+  const surplus=invOut-toLoad;
+  const toBattery=Math.min(surplus,battCap);
+  const toGrid=Math.max(0,surplus-toBattery);
+  const selfCon=loadDaily>0?(toLoad/loadDaily)*100:100;
+
+  // Hourly
+  const profile=PROFILES[profileKey];
+  const hourlyLoad=profile.map(f=>f*loadDaily);
+  const hourlySolar=SOLAR_CURVE.map(f=>f*invOut);
+
+  // 25-year cashflow WITH tariff escalation
+  const totalInstall=cap*installCost-subsidy;
+  const cashflow=[];
+  let cumCash=-totalInstall;
+  for(let y=1;y<=25;y++){
+    const deg=Math.pow(1-degradation,y);
+    const tariffY=tariff*Math.pow(1+tariffEsc,y);
+    const exportRateY=exportRate*Math.pow(1+tariffEsc*0.7,y);
+    const yieldY=annualYield*deg;
+    const toLoadY=Math.min(yieldY,loadDaily*365);
+    const toGridY=Math.max(0,yieldY-toLoadY);
+    const savedBill=toLoadY*tariffY;
+    const exportRev=toGridY*exportRateY;
+    const income=savedBill+exportRev-omCost;
+    cumCash+=income;
+    cashflow.push({year:y,income:Math.round(income),cumulative:Math.round(cumCash),
+      tariffY:tariffY.toFixed(2),yieldY:Math.round(yieldY),
+      savedBill:Math.round(savedBill),exportRev:Math.round(exportRev)});
+  }
+
+  // Payback (simple, with escalation)
+  let paybackYr=null;
+  let running=-totalInstall;
+  for(let y=0;y<cashflow.length;y++){
+    running+=cashflow[y].income;
+    if(running>=0&&!paybackYr){paybackYr=y+1+(running-cashflow[y].income)/cashflow[y].income*(-1);paybackYr=Math.max(0,y+1);}
+  }
+  if(!paybackYr) paybackYr='>25';
+
+  const annualSavings=cashflow[0].income+omCost;
+  const roi25=(cashflow[24].cumulative/totalInstall)*100;
+  const lcoe=(totalInstall+omCost*25)/(annualYield*25*0.91);
+  // Simple IRR (Newton-Raphson approx)
+  let irr=0.1;
+  for(let iter=0;iter<50;iter++){
+    let npv=-totalInstall, dnpv=0;
+    cashflow.forEach((cf,i)=>{const t=i+1;const d=Math.pow(1+irr,t);npv+=cf.income/d;dnpv-=t*cf.income/Math.pow(1+irr,t+1);});
+    irr-=npv/dnpv;
+    if(Math.abs(npv)<1) break;
+  }
+
+  // CO2
+  const co2Year=annualYield*CO2_EF/1000;
+  const co2_25=co2Year*25;
+  const trees=Math.round(co2Year*45);
+  const homes=Math.round(annualYield/7300);
+
+  // LOAN calculations
+  let loanResult=null;
+  if(loanEnabled&&loanAmt>0){
+    const emiMonths=loanTenure*12;
+    const emi=calcEMI(loanAmt,loanRate,emiMonths);
+    const totalPaid=emi*emiMonths+downAmt;
+    const totalInterest=emi*emiMonths-loanAmt;
+    // Year-by-year with EMI subtracted
+    const loanCF=[];
+    let loanCum=-downAmt;
+    for(let y=1;y<=25;y++){
+      const emiCost=y<=loanTenure?emi*12:0;
+      const netIncome=(cashflow[y-1].income+omCost)-emiCost-omCost; // income - EMI
+      loanCum+=cashflow[y-1].income-emiCost;
+      loanCF.push({year:y,emi:y<=loanTenure?Math.round(emi):0,
+        income:cashflow[y-1].income,netAfterEMI:Math.round(cashflow[y-1].income-emiCost),
+        cumulative:Math.round(loanCum)});
+    }
+    // Loan payback
+    let loanPB=null, lrunning=-downAmt;
+    for(let y=0;y<loanCF.length;y++){
+      const net=loanCF[y].income-(loanCF[y].year<=loanTenure?emi*12:0);
+      lrunning+=net;
+      if(lrunning>=0&&!loanPB) loanPB=loanCF[y].year;
+    }
+
+    // Amortization table
+    const amort=[];
+    let balance=loanAmt;
+    const mRate=loanRate/100/12;
+    for(let m=1;m<=emiMonths;m++){
+      const intPart=balance*mRate;
+      const prinPart=emi-intPart;
+      balance=Math.max(0,balance-prinPart);
+      amort.push({m,emi:Math.round(emi),int:Math.round(intPart),prin:Math.round(prinPart),bal:Math.round(balance)});
+    }
+
+    loanResult={emi:Math.round(emi),downAmt:Math.round(downAmt),totalInterest:Math.round(totalInterest),
+      totalPaid:Math.round(totalPaid),loanCF,loanPB:loanPB||'>25',
+      netProfit25:loanCF[24].cumulative,amort,bankName,loanAmt:Math.round(loanAmt),
+      emiAnnual:Math.round(emi*12)};
+  }
+
+  R={locName,lat,lon,cap,invEff,invSize,lossP,clampTF,avgGHI,ghi,
+    dailyYield,annualYield,PR,pvDC,invOut,toLoad,surplus,toBattery,toGrid,selfCon,
+    monthlyAC,loadDaily,battCap,hourlyLoad,hourlySolar,profileKey,
+    tariff,exportRate,tariffEsc,totalInstall,annualSavings,
+    cashflow,paybackYr,roi25,lcoe,irr:irr*100,
+    co2Year,co2_25,trees,homes,nasaUsed,loanEnabled,loanResult,
+    subsidy,omCost};
+
+  updateStatusBar(R);
+  renderOverview(R);
+  document.getElementById('placeholder').style.display='none';
+  document.getElementById('results').style.display='block';
+}
+
+// ══ STATUS BAR ══
+function updateStatusBar(r){
+  document.getElementById('st-loc').textContent='Location: '+r.locName;
+  document.getElementById('sd-loc').className='dot on';
+  document.getElementById('st-cap').textContent='Capacity: '+r.cap+' kWp';
+  document.getElementById('st-loan').textContent=r.loanEnabled?'Loan: Enabled':'Loan: Disabled';
+  document.getElementById('sd-loan').className='dot '+(r.loanEnabled?'on':'');
+}
+
+// ══ TAB SWITCH ══
+function sw(name){
+  document.querySelectorAll('.tab').forEach((t,i)=>{
+    const tabs=['overview','hourly','financial','loan-tab','co2'];
+    t.classList.toggle('active',tabs[i]===name);
+  });
+  document.querySelectorAll('.tp').forEach(p=>{p.classList.toggle('active',p.id==='tab-'+name);});
+  if(name==='hourly'&&R) renderHourly();
+  if(name==='financial'&&R) renderFinancial();
+  if(name==='loan-tab'&&R) renderLoan();
+  if(name==='co2'&&R) renderCO2();
+}
+
+// ══ OVERVIEW ══
+function renderOverview(r){
+  document.getElementById('k-daily').textContent=r.dailyYield.toFixed(1);
+  document.getElementById('k-annual').textContent=Math.round(r.annualYield).toLocaleString('en-IN');
+  document.getElementById('k-pr').textContent=r.PR.toFixed(1);
+  document.getElementById('k-bat').textContent=r.toBattery.toFixed(1);
+  document.getElementById('k-grid').textContent=r.toGrid.toFixed(1);
+  document.getElementById('k-self').textContent=Math.min(r.selfCon,100).toFixed(1);
+
+  document.getElementById('f-pv').textContent=r.pvDC.toFixed(1);
+  document.getElementById('f-inv').textContent=r.invOut.toFixed(1);
+  document.getElementById('f-load').textContent=r.toLoad.toFixed(1);
+  document.getElementById('f-bat').textContent=r.toBattery.toFixed(1);
+  document.getElementById('f-grid').textContent=r.toGrid.toFixed(1);
+  document.getElementById('fv1').textContent=r.pvDC.toFixed(1)+' kWh';
+  document.getElementById('fv2').textContent=r.invOut.toFixed(1)+' kWh';
+  document.getElementById('fv3').textContent=r.toBattery.toFixed(1)+' kWh';
+  document.getElementById('fv4').textContent=r.toGrid.toFixed(1)+' kWh';
+  ['fa3','fa4'].forEach(id=>document.getElementById(id).classList.toggle('on',r.surplus>0));
+
+  // Monthly chart
+  const maxY=Math.max(...r.monthlyAC);
+  document.getElementById('monthly-chart').innerHTML=r.monthlyAC.map((y,i)=>{
+    const toL=Math.min(y,r.toLoad*DAYS[i]);
+    const toG=Math.max(0,y-toL);
+    const hT=Math.round((y/maxY)*118);
+    const hL=Math.round((toL/y)*hT);
+    const hG=hT-hL;
+    return `<div class="bg tt-wrap"><div class="bs" style="height:${hT}px">
+      <div class="bseg" style="height:${hG}px;background:var(--orange)"></div>
+      <div class="bseg" style="height:${hL}px;background:var(--emerald)"></div>
+    </div><div class="bm">${MONTHS[i]}</div>
+    <div class="tt">${MONTHS[i]}: ${Math.round(y).toLocaleString('en-IN')} kWh</div></div>`;
+  }).join('');
+
+  document.getElementById('irr-src-badge').textContent=r.nasaUsed?'🛰 NASA Live':'📚 Built-in DB';
+
+  // Gauges
+  const gauges=[
+    {val:r.PR,max:100,label:'Perf. Ratio',unit:'%',color:'#14B8A6'},
+    {val:Math.min(r.selfCon,100),max:100,label:'Self Consump.',unit:'%',color:'#10B981'},
+    {val:Math.min((r.cap/r.invSize)*100,130),max:130,label:'DC/AC Ratio',unit:'%',color:'#F59E0B'},
+  ];
+  document.getElementById('gauges').innerHTML=gauges.map(g=>{
+    const pct=Math.min(g.val/g.max,1);
+    const r2=34,cx=46,cy=50;
+    const eA=-Math.PI/2+Math.PI*pct;
+    const eX=cx+r2*Math.cos(eA),eY=cy+r2*Math.sin(eA);
+    const lf=pct>.5?1:0;
+    return `<div class="gauge-wrap">
+      <svg width="92" height="60" viewBox="0 0 92 65" style="overflow:visible">
+        <path d="${cx-r2},${cy} A${r2},${r2} 0 0,1 ${cx+r2},${cy}" fill="none" stroke="rgba(255,255,255,.06)" stroke-width="5" stroke-linecap="round"/>
+        <path d="M${cx},${cy-r2} A${r2},${r2} 0 ${lf},1 ${eX},${eY}" fill="none" stroke="${g.color}" stroke-width="5" stroke-linecap="round"/>
+        <text x="${cx}" y="${cy-4}" text-anchor="middle" font-family="Syne,sans-serif" font-size="12" font-weight="800" fill="${g.color}">${g.val.toFixed(1)}</text>
+        <text x="${cx}" y="${cy+7}" text-anchor="middle" font-size="7" fill="#64748B">${g.unit}</text>
+      </svg>
+      <div class="gauge-label">${g.label}</div>
+    </div>`;
+  }).join('');
+
+  // Losses
+  const invL=((1-r.invEff)*100).toFixed(1);
+  document.getElementById('losses-tbl').innerHTML=`
+    <tr><td>Temperature Loss</td><td class="amber">3.5%</td></tr>
+    <tr><td>Wiring & Cabling</td><td class="amber">2.0%</td></tr>
+    <tr><td>Shading</td><td class="amber">2.5%</td></tr>
+    <tr><td>Dust & Soiling</td><td class="amber">2.0%</td></tr>
+    <tr><td>Module Mismatch</td><td class="amber">2.0%</td></tr>
+    <tr><td>Inverter Loss</td><td class="amber">${invL}%</td></tr>
+    <tr style="border-top:1px solid var(--border)"><td><b>Total System Loss</b></td><td class="amber"><b>${(r.lossP*100).toFixed(1)}%</b></td></tr>`;
+
+  const opt=Math.round(r.lat);
+  const stKey=CITIES[document.getElementById('city').value]?.state;
+  const stTariff=stKey?STATE_TARIFFS[stKey]:null;
+  document.getElementById('irr-tbl').innerHTML=`
+    <tr><td>Location</td><td class="teal">${r.locName}</td></tr>
+    <tr><td>Latitude</td><td>${r.lat.toFixed(2)}° N</td></tr>
+    <tr><td>Avg Daily GHI</td><td class="amber">${r.avgGHI.toFixed(2)} kWh/m²/day</td></tr>
+    <tr><td>Optimal Tilt</td><td>~${opt}° South</td></tr>
+    <tr><td>Tilt Correction</td><td>${(r.clampTF*100).toFixed(1)}%</td></tr>
+    <tr><td>Import Tariff</td><td class="red">₹${r.tariff}/kWh${stTariff?' ('+stTariff.n+')':''}</td></tr>
+    <tr><td>Export FiT</td><td class="emerald">₹${r.exportRate}/kWh (Net Metering)</td></tr>
+    <tr><td>Tariff Escalation</td><td>${(r.tariffEsc*100).toFixed(1)}%/yr</td></tr>
+    <tr><td>Data Source</td><td class="${r.nasaUsed?'emerald':'muted2'}">${r.nasaUsed?'NASA POWER Live':'Built-in DB'}</td></tr>
+    <tr><td>Best Month</td><td>${MONTHS[r.monthlyAC.indexOf(Math.max(...r.monthlyAC))]}</td></tr>`;
+}
+
+// ══ HOURLY ══
+function renderHourly(){
+  if(!R) return;
+  const mi=parseInt(document.getElementById('hourly-month').value);
+  const ghiV=mi>=0?R.ghi[mi]:R.avgGHI;
+  const scale=ghiV/R.avgGHI;
+  const sol=SOLAR_CURVE.map(f=>f*R.invOut*scale);
+  const ld=R.hourlyLoad;
+  const bat=sol.map((s,i)=>{const sur=s-ld[i];return sur>0?Math.min(sur,R.battCap/5):0;});
+  const grid=sol.map((s,i)=>Math.max(0,s-ld[i]-bat[i]));
+
+  const canvas=document.getElementById('hourly-canvas');
+  const ctx=canvas.getContext('2d');
+  const dpr=window.devicePixelRatio||1;
+  canvas.width=canvas.offsetWidth*dpr;
+  canvas.height=170*dpr;
+  ctx.scale(dpr,dpr);
+  const W=canvas.offsetWidth,H=170;
+  ctx.clearRect(0,0,W,H);
+  const maxV=Math.max(...sol,...ld)*1.1||1;
+  const pad={t:10,b:22,l:32,r:10};
+  const pw=W-pad.l-pad.r,ph=H-pad.t-pad.b;
+  const xStep=pw/23;
+  ctx.strokeStyle='rgba(255,255,255,.04)';ctx.lineWidth=1;
+  for(let v=0;v<=4;v++){
+    const y=pad.t+ph-(v/4)*ph;
+    ctx.beginPath();ctx.moveTo(pad.l,y);ctx.lineTo(pad.l+pw,y);ctx.stroke();
+    ctx.fillStyle='#475569';ctx.font='9px JetBrains Mono,monospace';
+    ctx.fillText((maxV*v/4).toFixed(1),1,y+3);
+  }
+  function area(data,col,alpha){
+    ctx.beginPath();
+    data.forEach((v,i)=>{const x=pad.l+i*xStep,y=pad.t+ph-(v/maxV)*ph;i?ctx.lineTo(x,y):ctx.moveTo(x,y);});
+    ctx.lineTo(pad.l+22*xStep,pad.t+ph);ctx.lineTo(pad.l,pad.t+ph);ctx.closePath();
+    ctx.fillStyle=col.replace('rgb(','rgba(').replace(')',`,${alpha})`);ctx.fill();
+  }
+  function line(data,col,dash){
+    ctx.beginPath();ctx.strokeStyle=col;ctx.lineWidth=2;
+    if(dash)ctx.setLineDash([4,4]);else ctx.setLineDash([]);
+    data.forEach((v,i)=>{const x=pad.l+i*xStep,y=pad.t+ph-(v/maxV)*ph;i?ctx.lineTo(x,y):ctx.moveTo(x,y);});
+    ctx.stroke();ctx.setLineDash([]);
+  }
+  area(sol,'rgb(245,158,11)',.12);area(grid,'rgb(249,115,22)',.1);area(bat,'rgb(59,130,246)',.08);
+  line(sol,'#F59E0B');line(ld,'#10B981');if(R.battCap>0)line(bat,'#3B82F6',true);line(grid,'#F97316',true);
+  ctx.fillStyle='#475569';ctx.font='9px JetBrains Mono,monospace';
+  [0,3,6,9,12,15,18,21,23].forEach(h=>ctx.fillText(String(h).padStart(2,'0')+'h',pad.l+h*xStep-7,H-4));
+
+  const maxS=Math.max(...sol)||1;
+  document.getElementById('hourly-tbl').innerHTML=`<thead><tr>
+    <th>Hour</th><th>Solar kW</th><th>Load kW</th><th>Bat kW</th><th>Export kW</th><th>Net Balance</th>
+  </tr></thead><tbody>${sol.map((s,i)=>{
+    const net=s-ld[i],col=net>=0?'var(--emerald)':'var(--red)';
+    return `<tr><td>${String(i).padStart(2,'0')}:00–${String(i+1).padStart(2,'0')}:00</td>
+      <td><div style="display:flex;align-items:center;gap:5px">${s.toFixed(2)}
+        <div class="mbar" style="width:32px"><div class="mbar-f" style="width:${(s/maxS*100).toFixed(0)}%"></div></div></div></td>
+      <td>${ld[i].toFixed(2)}</td><td>${bat[i].toFixed(2)}</td><td>${grid[i].toFixed(2)}</td>
+      <td style="color:${col}">${net>=0?'+':''}${net.toFixed(2)}</td></tr>`;
+  }).join('')}</tbody>`;
+}
+
+// ══ FINANCIAL ══
+function renderFinancial(){
+  if(!R) return;
+  const r=R;
+  document.getElementById('k-savings').textContent='₹'+Math.round(r.annualSavings).toLocaleString('en-IN');
+  document.getElementById('k-payback').textContent=typeof r.paybackYr==='number'?r.paybackYr.toFixed(1):r.paybackYr;
+  document.getElementById('k-roi').textContent=r.roi25.toFixed(0);
+  document.getElementById('k-lcoe').textContent=r.lcoe.toFixed(2);
+  document.getElementById('k-irr').textContent=r.irr.toFixed(1);
+  document.getElementById('cf-badge').textContent=`Tariff Esc: ${(r.tariffEsc*100).toFixed(1)}%/yr`;
+
+  document.getElementById('fin-tbl').innerHTML=`
+    <tr><td>System Cost</td><td class="amber">₹${Math.round(r.totalInstall).toLocaleString('en-IN')}</td></tr>
+    <tr><td>Govt Subsidy</td><td class="emerald">${r.subsidy>0?'₹'+r.subsidy.toLocaleString('en-IN'):'None'}</td></tr>
+    <tr><td>Import Tariff</td><td class="red">₹${r.tariff}/kWh (Y1)</td></tr>
+    <tr><td>Export FiT</td><td class="emerald">₹${r.exportRate}/kWh (Y1)</td></tr>
+    <tr><td>Yr1 Bill Saved</td><td class="emerald">₹${Math.round(r.toLoad*365*r.tariff).toLocaleString('en-IN')}</td></tr>
+    <tr><td>Yr1 Export Rev.</td><td class="teal">₹${Math.round(r.toGrid*365*r.exportRate).toLocaleString('en-IN')}</td></tr>
+    <tr><td>Annual O&M</td><td>₹${r.omCost.toLocaleString('en-IN')}</td></tr>
+    <tr><td>Simple Payback</td><td class="amber">${typeof r.paybackYr==='number'?r.paybackYr.toFixed(1):r.paybackYr} yrs</td></tr>
+    <tr><td>IRR (25yr)</td><td class="violet">${r.irr.toFixed(1)}%</td></tr>
+    <tr><td>25yr Net Profit</td><td class="${r.cashflow[24].cumulative>=0?'emerald':'red'}">₹${Math.round(r.cashflow[24].cumulative).toLocaleString('en-IN')}</td></tr>`;
+
+  // Cashflow canvas
+  drawCashflowCanvas('cashflow-canvas', r.cashflow, r.totalInstall, null, null);
+
+  // Yearly table
+  document.getElementById('yearly-tbl').innerHTML=`<thead><tr>
+    <th>Year</th><th>Tariff ₹/kWh</th><th>Yield kWh</th><th>Bill Saved ₹</th><th>Export Rev ₹</th><th>Net Income ₹</th><th>Cumulative ₹</th><th>Status</th>
+  </tr></thead><tbody>${r.cashflow.map(c=>`<tr>
+    <td>Y${c.year}</td>
+    <td>${c.tariffY}</td>
+    <td>${c.yieldY.toLocaleString('en-IN')}</td>
+    <td>₹${c.savedBill.toLocaleString('en-IN')}</td>
+    <td>₹${c.exportRev.toLocaleString('en-IN')}</td>
+    <td style="color:var(--amber)">₹${c.income.toLocaleString('en-IN')}</td>
+    <td style="color:${c.cumulative>=0?'var(--emerald)':'var(--red)'}">₹${c.cumulative.toLocaleString('en-IN')}</td>
+    <td style="color:${c.cumulative>=0?'var(--emerald)':'var(--muted)'}">${c.cumulative>=0?'✓ Profit':'⏳ Recovery'}</td>
+  </tr>`).join('')}</tbody>`;
+}
+
+function drawCashflowCanvas(canvasId, cashflow, totalInstall, loanCF, loanDown){
+  const canvas=document.getElementById(canvasId);
+  if(!canvas) return;
+  const ctx=canvas.getContext('2d');
+  const dpr=window.devicePixelRatio||1;
+  canvas.width=canvas.offsetWidth*dpr;
+  canvas.height=170*dpr;
+  ctx.scale(dpr,dpr);
+  const W=canvas.offsetWidth,H=170;
+  ctx.clearRect(0,0,W,H);
+
+  const vals=cashflow.map(c=>c.cumulative);
+  const lvals=loanCF?loanCF.map(c=>c.cumulative):[];
+  const allV=[-(loanCF?loanDown:totalInstall),...vals,...lvals];
+  const minV=Math.min(...allV),maxV=Math.max(...allV);
+  const range=maxV-minV||1;
+  const pad={t:10,b:22,l:48,r:10};
+  const pw=W-pad.l-pad.r,ph=H-pad.t-pad.b;
+  const xStep=pw/24;
+  const yZero=pad.t+ph-((-minV)/range)*ph;
+
+  ctx.strokeStyle='rgba(255,255,255,.12)';ctx.lineWidth=1;ctx.setLineDash([4,4]);
+  ctx.beginPath();ctx.moveTo(pad.l,yZero);ctx.lineTo(pad.l+pw,yZero);ctx.stroke();ctx.setLineDash([]);
+  ctx.strokeStyle='rgba(255,255,255,.04)';ctx.lineWidth=1;
+  for(let v=0;v<=4;v++){
+    const y=pad.t+(v/4)*ph;
+    ctx.beginPath();ctx.moveTo(pad.l,y);ctx.lineTo(pad.l+pw,y);ctx.stroke();
+    const val=maxV-(v/4)*range;
+    ctx.fillStyle='#475569';ctx.font='9px JetBrains Mono,monospace';
+    ctx.fillText('₹'+(Math.abs(val)>=100000?(val/100000).toFixed(1)+'L':(val/1000).toFixed(0)+'K'),2,y+3);
+  }
+
+  function drawCurve(data, color, startNeg){
+    const startY=pad.t+ph-((startNeg-minV)/range)*ph;
+    ctx.beginPath();
+    ctx.moveTo(pad.l,startY);
+    data.forEach((v,i)=>{const x=pad.l+(i+1)*xStep,y=pad.t+ph-((v-minV)/range)*ph;ctx.lineTo(x,y);});
+    const grad=ctx.createLinearGradient(0,0,0,H);
+    grad.addColorStop(0,color.replace(')',',0.25)').replace('rgb','rgba'));
+    grad.addColorStop(1,color.replace(')',',0)').replace('rgb','rgba'));
+    const lastX=pad.l+(data.length)*xStep;
+    const lastY=pad.t+ph-((data[data.length-1]-minV)/range)*ph;
+    ctx.lineTo(lastX,yZero);ctx.lineTo(pad.l,yZero);ctx.closePath();
+    ctx.fillStyle=grad;ctx.fill();
+    ctx.beginPath();ctx.strokeStyle=color;ctx.lineWidth=2.5;
+    ctx.moveTo(pad.l,startY);
+    data.forEach((v,i)=>{ctx.lineTo(pad.l+(i+1)*xStep,pad.t+ph-((v-minV)/range)*ph);});
+    ctx.stroke();
+  }
+
+  drawCurve(vals,'rgb(16,185,129)',-(loanCF?loanDown:totalInstall));
+  if(loanCF) drawCurve(lvals,'rgb(139,92,246)',-(loanDown));
+
+  // Payback markers
+  vals.forEach((v,i)=>{if(i>0&&vals[i-1]<0&&v>=0){
+    const x=pad.l+(i+1)*xStep;
+    ctx.strokeStyle='#F59E0B';ctx.lineWidth=1.5;ctx.setLineDash([3,3]);
+    ctx.beginPath();ctx.moveTo(x,pad.t);ctx.lineTo(x,pad.t+ph);ctx.stroke();ctx.setLineDash([]);
+    ctx.fillStyle='#F59E0B';ctx.font='8px JetBrains Mono,monospace';
+    ctx.fillText(`PB Y${i+1}`,x+2,pad.t+10);
+  }});
+
+  ctx.fillStyle='#475569';ctx.font='9px JetBrains Mono,monospace';
+  [1,5,10,15,20,25].forEach(y=>ctx.fillText('Y'+y,pad.l+y*xStep-7,H-5));
+}
+
+// ══ LOAN ANALYSIS ══
+function renderLoan(){
+  if(!R) return;
+  const hasLoan=R.loanEnabled&&R.loanResult;
+  document.getElementById('no-loan-msg').style.display=hasLoan?'none':'flex';
+  document.getElementById('loan-result').style.display=hasLoan?'block':'none';
+  if(!hasLoan) return;
+
+  const lr=R.loanResult;
+  document.getElementById('bank-badge').textContent=lr.bankName;
+  document.getElementById('lk-emi').textContent='₹'+lr.emi.toLocaleString('en-IN');
+  document.getElementById('lk-down').textContent='₹'+lr.downAmt.toLocaleString('en-IN');
+  document.getElementById('lk-int').textContent='₹'+lr.totalInterest.toLocaleString('en-IN');
+  document.getElementById('lk-payback-loan').textContent=lr.loanPB;
+  document.getElementById('lk-netprofit').textContent='₹'+lr.netProfit25.toLocaleString('en-IN');
+
+  document.getElementById('loan-tbl').innerHTML=`
+    <tr><td>Loan Amount</td><td class="violet">₹${lr.loanAmt.toLocaleString('en-IN')}</td></tr>
+    <tr><td>Down Payment</td><td>₹${lr.downAmt.toLocaleString('en-IN')}</td></tr>
+    <tr><td>Monthly EMI</td><td class="violet">₹${lr.emi.toLocaleString('en-IN')}</td></tr>
+    <tr><td>Annual EMI</td><td class="violet">₹${lr.emiAnnual.toLocaleString('en-IN')}</td></tr>
+    <tr><td>Total Interest</td><td class="red">₹${lr.totalInterest.toLocaleString('en-IN')}</td></tr>
+    <tr><td>Total Cost (Loan)</td><td class="amber">₹${lr.totalPaid.toLocaleString('en-IN')}</td></tr>
+    <tr><td>Yr1 Net (Sav - EMI)</td><td class="${lr.loanCF[0].netAfterEMI>=0?'emerald':'red'}">₹${lr.loanCF[0].netAfterEMI.toLocaleString('en-IN')}</td></tr>
+    <tr><td>Payback (w/ Loan)</td><td class="amber">${lr.loanPB} yrs</td></tr>
+    <tr><td>25yr Net Profit</td><td class="${lr.netProfit25>=0?'emerald':'red'}">₹${lr.netProfit25.toLocaleString('en-IN')}</td></tr>`;
+
+  document.getElementById('compare-tbl').innerHTML=`
+    <tr><td>Cash Upfront Cost</td><td class="amber">₹${Math.round(R.totalInstall).toLocaleString('en-IN')}</td></tr>
+    <tr><td>Loan Upfront Cost</td><td class="violet">₹${lr.downAmt.toLocaleString('en-IN')}</td></tr>
+    <tr><td>Extra Upfront Saved</td><td class="emerald">₹${(R.totalInstall-lr.downAmt).toLocaleString('en-IN')}</td></tr>
+    <tr><td>Cash 25yr Profit</td><td class="emerald">₹${R.cashflow[24].cumulative.toLocaleString('en-IN')}</td></tr>
+    <tr><td>Loan 25yr Profit</td><td class="${lr.netProfit25>=0?'emerald':'red'}">₹${lr.netProfit25.toLocaleString('en-IN')}</td></tr>
+    <tr><td>Interest Cost</td><td class="red">₹${lr.totalInterest.toLocaleString('en-IN')}</td></tr>
+    <tr><td>Cash Payback</td><td>${typeof R.paybackYr==='number'?R.paybackYr.toFixed(1):R.paybackYr} yrs</td></tr>
+    <tr><td>Loan Payback</td><td class="violet">${lr.loanPB} yrs</td></tr>`;
+
+  // Combined cashflow chart
+  drawCashflowCanvas('loan-cf-canvas', R.cashflow, R.totalInstall, lr.loanCF, lr.downAmt);
+
+  // Annual net benefit bar
+  const canvas=document.getElementById('loan-bar-canvas');
+  const ctx=canvas.getContext('2d');
+  const dpr=window.devicePixelRatio||1;
+  canvas.width=canvas.offsetWidth*dpr;
+  canvas.height=170*dpr;
+  ctx.scale(dpr,dpr);
+  const W=canvas.offsetWidth,H=170;
+  ctx.clearRect(0,0,W,H);
+  const nets=lr.loanCF.map(c=>c.netAfterEMI);
+  const maxNet=Math.max(...nets,...nets.map(v=>-v))||1;
+  const pad={t:10,b:22,l:45,r:5};
+  const pw=W-pad.l-pad.r,ph=H-pad.t-pad.b;
+  const bw=pw/25-2;
+  const yZero=pad.t+ph/2+(Math.max(...nets.filter(v=>v<0))||0)/maxNet*ph/2;
+  ctx.strokeStyle='rgba(255,255,255,.1)';ctx.lineWidth=1;ctx.setLineDash([3,3]);
+  ctx.beginPath();ctx.moveTo(pad.l,pad.t+ph/2);ctx.lineTo(pad.l+pw,pad.t+ph/2);ctx.stroke();ctx.setLineDash([]);
+  nets.forEach((v,i)=>{
+    const x=pad.l+i*(bw+2);
+    const bh=Math.abs(v/maxNet)*ph/2;
+    const by=v>=0?pad.t+ph/2-bh:pad.t+ph/2;
+    ctx.fillStyle=v>=0?'rgba(16,185,129,.7)':'rgba(239,68,68,.7)';
+    ctx.fillRect(x,by,bw,bh);
+    if(i%5===0){ctx.fillStyle='#475569';ctx.font='8px JetBrains Mono,monospace';ctx.fillText('Y'+(i+1),x,H-5);}
+  });
+  ctx.fillStyle='#475569';ctx.font='9px JetBrains Mono,monospace';
+  [-1,-.5,0,.5,1].forEach(p=>{
+    const y=pad.t+ph/2-p*ph/2;const v=p*maxNet;
+    ctx.fillText('₹'+(Math.abs(v)>=100000?(v/100000).toFixed(1)+'L':(v/1000).toFixed(0)+'K'),1,y+3);
+  });
+
+  // Amortization
+  const amortLimit=Math.min(lr.amort.length,120);
+  document.getElementById('amort-tbl').innerHTML=`<thead><tr>
+    <th style="text-align:left">Month</th><th>EMI ₹</th><th>Interest ₹</th><th>Principal ₹</th><th>Balance ₹</th>
+  </tr></thead><tbody>${lr.amort.slice(0,amortLimit).map(a=>`<tr>
+    <td>M${a.m} (Y${Math.ceil(a.m/12)})</td>
+    <td>₹${a.emi.toLocaleString('en-IN')}</td>
+    <td style="color:var(--red)">₹${a.int.toLocaleString('en-IN')}</td>
+    <td style="color:var(--emerald)">₹${a.prin.toLocaleString('en-IN')}</td>
+    <td style="color:var(--muted2)">₹${a.bal.toLocaleString('en-IN')}</td>
+  </tr>`).join('')}${lr.amort.length>120?`<tr><td colspan="5" style="text-align:center;color:var(--muted)">... ${lr.amort.length-120} more rows</td></tr>`:''}</tbody>`;
+}
+
+// ══ CO2 ══
+function renderCO2(){
+  if(!R) return;
+  const r=R;
+  document.getElementById('k-co2yr').textContent=r.co2Year.toFixed(2);
+  document.getElementById('k-co225').textContent=r.co2_25.toFixed(1);
+  document.getElementById('k-trees').textContent=r.trees.toLocaleString('en-IN');
+  document.getElementById('k-homes').textContent=r.homes;
+
+  const petrol=(r.co2Year*1000/2.31).toFixed(0);
+  const flights=(r.co2Year/0.255).toFixed(1);
+  document.getElementById('co2-items').innerHTML=[
+    {v:'🌳 '+r.trees.toLocaleString(),l:'Trees Equiv/yr'},
+    {v:'⛽ '+parseInt(petrol).toLocaleString()+' L',l:'Petrol Avoided/yr'},
+    {v:'✈ '+flights,l:'Flights (Del–Mum)'},
+    {v:'🏠 '+r.homes,l:'Homes Powered/yr'},
+    {v:'⚡ '+Math.round(r.annualYield).toLocaleString()+' kWh',l:'Clean Energy/yr'},
+    {v:'🏭 '+r.co2Year.toFixed(2)+' T',l:'CO₂ Avoided/yr'},
+  ].map(i=>`<div class="co2-item"><div class="co2-val">${i.v}</div><div class="co2-lbl">${i.l}</div></div>`).join('');
+
+  const canvas=document.getElementById('co2-canvas');
+  const ctx=canvas.getContext('2d');
+  const dpr=window.devicePixelRatio||1;
+  canvas.width=canvas.offsetWidth*dpr;canvas.height=170*dpr;ctx.scale(dpr,dpr);
+  const W=canvas.offsetWidth,H=170;ctx.clearRect(0,0,W,H);
+  const maxC=r.co2Year*25;
+  const pad={t:10,b:22,l:40,r:10};const pw=W-pad.l-pad.r,ph=H-pad.t-pad.b;
+  ctx.beginPath();
+  for(let y=0;y<=25;y++){const x=pad.l+(y/25)*pw,yv=pad.t+ph-(r.co2Year*y/maxC)*ph;y?ctx.lineTo(x,yv):ctx.moveTo(x,yv);}
+  ctx.lineTo(pad.l+pw,pad.t+ph);ctx.lineTo(pad.l,pad.t+ph);ctx.closePath();
+  const g=ctx.createLinearGradient(0,0,0,H);
+  g.addColorStop(0,'rgba(16,185,129,.4)');g.addColorStop(1,'rgba(16,185,129,0)');
+  ctx.fillStyle=g;ctx.fill();
+  ctx.beginPath();ctx.strokeStyle='#10B981';ctx.lineWidth=2.5;
+  for(let y=0;y<=25;y++){const x=pad.l+(y/25)*pw,yv=pad.t+ph-(r.co2Year*y/maxC)*ph;y?ctx.lineTo(x,yv):ctx.moveTo(x,yv);}
+  ctx.stroke();
+  ctx.fillStyle='#475569';ctx.font='9px JetBrains Mono,monospace';
+  [0,5,10,15,20,25].forEach(y=>{
+    ctx.fillText('Y'+y,pad.l+(y/25)*pw-7,H-5);
+    ctx.fillText((r.co2Year*y).toFixed(0)+'T',2,pad.t+ph-(r.co2Year*y/maxC)*ph+3);
+  });
+}
+
+// ══ PDF EXPORT ══
+async function exportPDF(){
+  if(!R){alert('Please calculate first.');return;}
+  const r=R;
+  const{jsPDF}=window.jspdf;
+  const doc=new jsPDF({orientation:'portrait',unit:'mm',format:'a4'});
+  const W=210,p=14;
+  const amber=[245,158,11],teal=[20,184,166],emerald=[16,185,129],violet=[139,92,246];
+  const dark=[7,12,24],panel=[15,23,42],muted=[100,116,139];
+
+  // BG
+  doc.setFillColor(...dark);doc.rect(0,0,W,297,'F');
+  doc.setFillColor(...panel);doc.rect(0,0,W,26,'F');
+
+  // Header
+  doc.setFillColor(...amber);doc.circle(p+5,13,5,'F');
+  doc.setFont('helvetica','bold');doc.setFontSize(16);doc.setTextColor(...amber);
+  doc.text('SolarYield India',p+13,10);
+  doc.setFont('helvetica','normal');doc.setFontSize(7);doc.setTextColor(...muted);
+  doc.text('ADVANCED PV ENERGY & FINANCIAL REPORT',p+13,16);
+  doc.text('Generated: '+new Date().toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'}),W-p,10,{align:'right'});
+  doc.text('Location: '+r.locName,W-p,16,{align:'right'});
+
+  let cy=33;
+  function sec(title,color=amber){
+    doc.setFillColor(...color);doc.rect(p,cy,2.5,4.5,'F');
+    doc.setFont('helvetica','bold');doc.setFontSize(8.5);doc.setTextColor(...color);
+    doc.text(title.toUpperCase(),p+5,cy+3.5);cy+=10;
+  }
+  function kbox(x,y,val,unit,label,color){
+    doc.setFillColor(17,24,39);doc.roundedRect(x,y,38,16,1.5,1.5,'F');
+    doc.setDrawColor(...color);doc.setLineWidth(.25);doc.roundedRect(x,y,38,16,1.5,1.5,'S');
+    doc.setFont('helvetica','bold');doc.setFontSize(10);doc.setTextColor(...color);
+    doc.text(String(val),x+19,y+7,{align:'center'});
+    doc.setFontSize(5.5);doc.setTextColor(...muted);
+    doc.text(unit,x+19,y+11,{align:'center'});
+    doc.text(label.toUpperCase(),x+19,y+14.5,{align:'center'});
+  }
+  function row(label,val,vc=[241,245,249]){
+    doc.setFillColor(17,24,39);doc.rect(p,cy,W-2*p,6.5,'F');
+    doc.setFont('helvetica','normal');doc.setFontSize(7);doc.setTextColor(...muted);
+    doc.text(label,p+2.5,cy+4.5);
+    doc.setFont('helvetica','bold');doc.setTextColor(...vc);
+    doc.text(String(val),W-p-2,cy+4.5,{align:'right'});
+    cy+=7;
+  }
+
+  // Overview KPIs
+  sec('System Overview',amber);
+  kbox(p,cy,r.dailyYield.toFixed(1),'kWh/day','Daily Yield',amber);
+  kbox(p+42,cy,Math.round(r.annualYield).toLocaleString('en-IN'),'kWh/yr','Annual Yield',teal);
+  kbox(p+84,cy,r.PR.toFixed(1)+'%','%','Perf. Ratio',emerald);
+  kbox(p+126,cy,r.toGrid.toFixed(1),'kWh/day','Grid Export',[249,115,22]);
+  cy+=22;
+
+  // Energy flow
+  sec('Energy Flow (Daily Average)',teal);
+  const nodes=[
+    {l:'Solar PV',v:r.pvDC.toFixed(1)+' kWh',c:amber},
+    {l:'Inverter',v:r.invOut.toFixed(1)+' kWh',c:teal},
+    {l:'Load',v:r.toLoad.toFixed(1)+' kWh',c:emerald},
+    {l:'Battery',v:r.toBattery.toFixed(1)+' kWh',c:[59,130,246]},
+    {l:'Grid',v:r.toGrid.toFixed(1)+' kWh',c:[249,115,22]},
+  ];
+  const bw=28,bgap=7,sx=p;
+  nodes.forEach((n,i)=>{
+    const bx=sx+i*(bw+bgap);
+    doc.setFillColor(17,24,39);doc.roundedRect(bx,cy,bw,12,1.5,1.5,'F');
+    doc.setDrawColor(...n.c);doc.setLineWidth(.25);doc.roundedRect(bx,cy,bw,12,1.5,1.5,'S');
+    doc.setFont('helvetica','bold');doc.setFontSize(7);doc.setTextColor(...n.c);
+    doc.text(n.v,bx+bw/2,cy+5.5,{align:'center'});
+    doc.setFontSize(5.5);doc.setTextColor(...muted);
+    doc.text(n.l,bx+bw/2,cy+10,{align:'center'});
+    if(i<4){doc.setDrawColor(...muted);doc.setLineWidth(.3);doc.line(bx+bw+1,cy+6,bx+bw+bgap-1,cy+6);}
+  });cy+=19;
+
+  // Tariff info
+  sec('Electricity Tariff & Location',[59,130,246]);
+  row('Location',r.locName,[...teal]);
+  row('Import Tariff (Y1)','₹'+r.tariff+'/kWh',[...amber]);
+  row('Export FiT (Net Metering Y1)','₹'+r.exportRate+'/kWh',[...emerald]);
+  row('Annual Tariff Escalation',(r.tariffEsc*100).toFixed(1)+'% per year');
+  row('Avg Daily GHI',r.avgGHI.toFixed(2)+' kWh/m²/day',[...amber]);
+  row('Data Source',r.nasaUsed?'NASA POWER Live (2019-2023)':'Built-in Database',r.nasaUsed?[...emerald]:[...muted]);
+  cy+=2;
+
+  // Financial
+  sec('Financial ROI',emerald);
+  kbox(p,cy,'₹'+Math.round(r.annualSavings/1000)+'K','₹/yr','Yr1 Savings',emerald);
+  kbox(p+42,cy,typeof r.paybackYr==='number'?r.paybackYr.toFixed(1):'>25','years','Payback',amber);
+  kbox(p+84,cy,r.roi25.toFixed(0)+'%','25yr','Total ROI',teal);
+  kbox(p+126,cy,r.irr.toFixed(1)+'%','IRR','Int. Rate Ret.',violet);
+  cy+=22;
+  row('System Cost (Net of Subsidy)','₹'+Math.round(r.totalInstall).toLocaleString('en-IN'),[...amber]);
+  row('25-Year Net Profit','₹'+Math.round(r.cashflow[24].cumulative).toLocaleString('en-IN'),r.cashflow[24].cumulative>=0?[...emerald]:[239,68,68]);
+  row('LCOE','₹'+r.lcoe.toFixed(2)+'/kWh',[...teal]);
+  cy+=2;
+
+  // Loan section
+  if(r.loanEnabled&&r.loanResult){
+    const lr=r.loanResult;
+    if(cy>200){doc.addPage();doc.setFillColor(...dark);doc.rect(0,0,W,297,'F');cy=20;}
+    sec('Bank Loan Analysis',violet);
+    kbox(p,cy,'₹'+Math.round(lr.emi).toLocaleString('en-IN'),'₹/month','Monthly EMI',violet);
+    kbox(p+42,cy,'₹'+Math.round(lr.downAmt/1000)+'K','₹','Down Payment',[59,130,246]);
+    kbox(p+84,cy,'₹'+Math.round(lr.totalInterest/1000)+'K','₹','Total Interest',[239,68,68]);
+    kbox(p+126,cy,lr.loanPB,'years','Loan Payback',amber);
+    cy+=22;
+    row('Bank',lr.bankName,[...violet]);
+    row('Loan Amount','₹'+lr.loanAmt.toLocaleString('en-IN'));
+    row('Annual EMI Cost','₹'+lr.emiAnnual.toLocaleString('en-IN'),[...violet]);
+    row('Yr1 Net After EMI','₹'+lr.loanCF[0].netAfterEMI.toLocaleString('en-IN'),lr.loanCF[0].netAfterEMI>=0?[...emerald]:[239,68,68]);
+    row('25yr Net Profit (Loan)','₹'+lr.netProfit25.toLocaleString('en-IN'),lr.netProfit25>=0?[...emerald]:[239,68,68]);
+    cy+=2;
+  }
+
+  // CO2
+  if(cy>220){doc.addPage();doc.setFillColor(...dark);doc.rect(0,0,W,297,'F');cy=20;}
+  sec('Environmental Impact',emerald);
+  row('Annual CO₂ Avoided',r.co2Year.toFixed(2)+' tonnes',[...emerald]);
+  row('25-Year CO₂ Avoided',r.co2_25.toFixed(1)+' tonnes CO₂',[...emerald]);
+  row('Tree Equivalent',r.trees.toLocaleString('en-IN')+' trees/year');
+  row('Homes Powered',r.homes+' homes/year');
+  cy+=2;
+
+  // Monthly chart
+  if(cy>210){doc.addPage();doc.setFillColor(...dark);doc.rect(0,0,W,297,'F');cy=20;}
+  sec('Monthly Energy Yield (kWh)',amber);
+  const mw=(W-2*p)/12;
+  const maxM=Math.max(...r.monthlyAC);
+  MONTHS.forEach((m,i)=>{
+    const bx=p+i*mw;
+    const pct=r.monthlyAC[i]/maxM;
+    const bh=18*pct;
+    doc.setFillColor(...amber,200);doc.rect(bx+.5,cy+18-bh,mw-1,bh,'F');
+    doc.setFont('helvetica','normal');doc.setFontSize(5.5);doc.setTextColor(...muted);
+    doc.text(m,bx+mw/2,cy+22,{align:'center'});
+    doc.text(Math.round(r.monthlyAC[i]/1000).toFixed(1)+'K',bx+mw/2,cy+27,{align:'center'});
+  });
+  cy+=32;
+
+  // Footer
+  doc.setFillColor(...panel);doc.rect(0,285,W,12,'F');
+  doc.setFontSize(6);doc.setTextColor(...muted);
+  doc.text('SolarYield India | For estimation purposes only. Consult a certified solar engineer for detailed design.',W/2,292,{align:'center'});
+
+  doc.save(`SolarYield_${r.locName.replace(/[^a-z0-9]/gi,'_')}_Report.pdf`);
+}
+
+// ══ RESIZE ══
+window.addEventListener('resize',()=>{if(R){renderHourly();}});
+document.getElementById('city').value='bengaluru';
+onCityChange();
+updateEMIPreview();
+</script>
+</body>
+</html>
