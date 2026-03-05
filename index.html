@@ -390,7 +390,7 @@ table.ht tbody td:first-child{text-align:left;color:var(--muted2);}
   <div class="ss">
     <div class="st">⚡ PV System</div>
     <label>Solar Capacity (kWp)</label>
-    <input type="number" id="capacity" value="10" min=".1" step=".1">
+    <input type="number" id="capacity" value="10" min=".1" step=".1" oninput="updateEMIPreview()">
     <div class="g2">
       <div><label>Panel Efficiency (%)</label><input type="number" id="panel-eff" value="20" min="5" max="30" step=".1"></div>
       <div><label>System Losses (%)</label><input type="number" id="losses" value="14" min="0" max="40" step=".5"></div>
@@ -456,11 +456,11 @@ table.ht tbody td:first-child{text-align:left;color:var(--muted2);}
   <div class="ss">
     <div class="st">📊 Project Cost</div>
     <div class="g2">
-      <div><label>Install Cost (₹/kWp)</label><input type="number" id="install-cost" value="45000" step="1000"></div>
+      <div><label>Install Cost (₹/kWp)</label><input type="number" id="install-cost" value="45000" step="1000" oninput="updateEMIPreview()"></div>
       <div><label>Annual O&M (₹)</label><input type="number" id="om-cost" value="5000" step="500"></div>
     </div>
     <div class="g2">
-      <div><label>Subsidy (₹)</label><input type="number" id="subsidy" value="0" step="1000" placeholder="0"></div>
+      <div><label>Subsidy (₹)</label><input type="number" id="subsidy" value="0" step="1000" placeholder="0" oninput="updateEMIPreview()"></div>
       <div><label>Degradation (%/yr)</label><input type="number" id="degradation" value="0.7" step=".1" min="0" max="5"></div>
     </div>
   </div>
@@ -494,7 +494,7 @@ table.ht tbody td:first-child{text-align:left;color:var(--muted2);}
       </div>
       <div class="g2">
         <div><label>Tenure (Years)</label><input type="number" id="loan-tenure" value="7" min="1" max="15" oninput="updateEMIPreview()"></div>
-        <div><label>Down Payment (%)</label><input type="number" id="down-pct" value="20" min="0" max="80" step="5" oninput="updateEMIPreview()"></div>
+        <div><label>Down Payment (%)</label><input type="number" id="down-pct" value="20" min="0" max="80" step="5" oninput="document.getElementById('loan-amt').value='';updateEMIPreview()"></div>
       </div>
       <label>Moratorium Period (months)</label>
       <input type="number" id="moratorium" value="0" min="0" max="12" oninput="updateEMIPreview()">
@@ -510,6 +510,7 @@ table.ht tbody td:first-child{text-align:left;color:var(--muted2);}
   </div>
 
   <button class="calc-btn" onclick="calculateAll()">⚡ Calculate Yield & ROI</button>
+  <button class="calc-btn" onclick="printReport()" style="background:linear-gradient(135deg,#8B5CF6,#6366F1);margin-top:.5rem">🖨 Download PDF Report</button>
 </aside>
 
 <!-- ═══════════════ CONTENT ═══════════════ -->
@@ -848,6 +849,41 @@ function bankChanged(){
 }
 
 // ══ LOAN TOGGLE ══
+function printReport(){
+  if(!R){alert('Please click Calculate first to generate results before downloading report.');return;}
+  const style=`<style>
+    @media print{
+      body{font-family:Arial,sans-serif;font-size:9pt;color:#0F172A;}
+      .no-print{display:none!important;}
+      .wrap,.sb,.tabs{display:block!important;}
+      .sb{display:none!important;}
+      .tp{display:block!important;page-break-before:always;}
+      #tab-overview{page-break-before:avoid;}
+      table{width:100%;border-collapse:collapse;font-size:8pt;}
+      th{background:#0F172A!important;color:#fff!important;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+      tr:nth-child(even){background:#F1F5F9!important;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+      td,th{padding:3px 5px;border:0.3pt solid #CBD5E1;}
+      canvas{max-width:100%;}
+      .kbox{border:1px solid #CBD5E1;border-radius:4px;padding:8px;text-align:center;}
+      .kv{font-size:16pt;font-weight:bold;color:#F97316;}
+      h2{color:#F97316;border-bottom:2pt solid #F97316;padding-bottom:4px;}
+      h3{color:#8B5CF6;}
+    }
+  </style>`;
+  const printWin=window.open('','_blank');
+  printWin.document.write('<html><head><title>SolarYield India — Report</title>'+style+'</head><body>');
+  printWin.document.write('<h1 style="color:#F97316;font-size:18pt">☀ SolarYield India — Solar PV Financial Report</h1>');
+  printWin.document.write('<p style="color:#64748B;font-size:8pt">Generated: '+new Date().toLocaleString('en-IN')+' | Location: '+(document.getElementById('city').options[document.getElementById('city').selectedIndex]?.text||'Custom')+'</p>');
+  // Copy each tab's content
+  ['tab-overview','tab-cashflow','tab-environment','tab-details','tab-loan-tab'].forEach(id=>{
+    const el=document.getElementById(id);
+    if(el) printWin.document.write('<div style="page-break-before:always">'+el.innerHTML+'</div>');
+  });
+  printWin.document.write('</body></html>');
+  printWin.document.close();
+  setTimeout(()=>{printWin.focus();printWin.print();},800);
+}
+
 function toggleLoan(){
   loanEnabled=!loanEnabled;
   const sw=document.getElementById('loan-sw');
@@ -1076,7 +1112,7 @@ function calculateAll(){
     let loanCum=-downAmt;
     for(let y=1;y<=25;y++){
       const emiCost=y<=loanTenure?emi*12:0;
-      const netIncome=(cashflow[y-1].income+omCost)-emiCost-omCost; // income - EMI
+      const netIncome=cashflow[y-1].income - emiCost; // net_income already has O&M deducted
       loanCum+=cashflow[y-1].income-emiCost;
       loanCF.push({year:y,emi:y<=loanTenure?Math.round(emi):0,
         income:cashflow[y-1].income,netAfterEMI:Math.round(cashflow[y-1].income-emiCost),
