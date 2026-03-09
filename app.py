@@ -577,7 +577,8 @@ def main():
         # ── 3. TILT & AZIMUTH ──
         st.markdown("### 📐 Tilt & Azimuth")
         opt_tilt=round(abs(lat)*0.76+3.1,1)
-        tilt=st.slider(f"Panel Tilt (°)  [Optimal ≈ {opt_tilt}°]",0,60,opt_tilt)
+        opt_tilt_int=int(round(opt_tilt))
+        tilt=st.slider(f"Panel Tilt (°)  [Optimal ≈ {opt_tilt}°]",0,60,opt_tilt_int)
         azimuth=st.slider("Azimuth (° from North)  [180°=South]",90,270,180)
         tf_val=tilt_f(lat,tilt,azimuth)
         az_lbl={90:"East",135:"SE",180:"South",225:"SW",270:"West"}.get(azimuth,f"{azimuth}°")
