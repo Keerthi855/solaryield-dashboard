@@ -217,12 +217,19 @@ def gen_pdf(R, P):
     from reportlab.pdfbase import pdfmetrics as PM
     from reportlab.pdfbase.ttfonts import TTFont
     import os, math as M
-    for path,name in [('/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf','Sans'),
-                      ('/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf','Sans-B'),
-                      ('/usr/share/fonts/truetype/dejavu/DejaVuSans-Oblique.ttf','Sans-I')]:
-        if os.path.exists(path):
-            try: PM.registerFont(TTFont(name,path))
-            except: pass
+    # Register fonts: TTF on Linux, Helvetica aliases on Streamlit Cloud
+    import os as _os
+    _font_map = [
+        ('/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf',        'Sans',   'Helvetica'),
+        ('/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf',   'Sans-B', 'Helvetica-Bold'),
+        ('/usr/share/fonts/truetype/dejavu/DejaVuSans-Oblique.ttf','Sans-I', 'Helvetica-Oblique'),
+    ]
+    for path, alias, fallback in _font_map:
+        if _os.path.exists(path):
+            try: PM.registerFont(TTFont(alias, path))
+            except: PM._fonts[alias] = PM._fonts[fallback]
+        else:
+            PM._fonts[alias] = PM._fonts[fallback]
     W,H=A4; NV=RC.HexColor('#0D2137'); NV2=RC.HexColor('#163350')
     GD=RC.HexColor('#C9922A'); GD2=RC.HexColor('#F0B429'); GN=RC.HexColor('#1A6B3C')
     RD=RC.HexColor('#8B1A1A'); SL=RC.HexColor('#334155'); MU=RC.HexColor('#6B7280')
@@ -600,9 +607,8 @@ def main():
         inv_cap  =round(cap/inv_ratio,2)
         inv_type =st.selectbox("Inverter Type",["String Inverter","Central Inverter","Micro Inverter","Hybrid Inverter"])
         inv_eff  =st.slider("Inverter Efficiency (%)",94,99,97)/100
-        num_inv  =math.ceil(cap/inv_cap) if inv_cap>0 else 1
-        c_ia,c_ib=st.columns(2); c_ia.metric("Inverter Size",f"{inv_cap:.1f} kVA"); c_ib.metric("Units",str(num_inv))
-        if 1.05<=inv_ratio<=1.30: st.success(f"✅ {inv_type} — {inv_cap:.1f} kVA × {num_inv}")
+        c_ia,c_ib=st.columns(2); c_ia.metric("Inverter Size",f"{inv_cap:.1f} kVA"); c_ib.metric("DC/AC Ratio",f"{inv_ratio:.2f}")
+        if 1.05<=inv_ratio<=1.30: st.success(f"✅ {inv_type} — {inv_cap:.1f} kVA")
         elif inv_ratio<1.05: st.warning("⚠️ Ratio < 1.05: May underperform")
         else: st.warning("⚠️ Ratio > 1.30: Clipping on peak hours")
 
@@ -773,25 +779,23 @@ def main():
     # TAB 4 — INVERTER & LOAD
     with tabs[3]:
         sh("INVERTER SIZING ANALYSIS")
-        ci1,ci2,ci3,ci4=st.columns(4)
+        ci1,ci2,ci3=st.columns(3)
         ci1.metric("PV Array (DC)",f"{P.get('cap',cap)} kWp")
         ci2.metric("Inverter (AC)",f"{P.get('inv_cap',inv_cap):.1f} kVA")
         ci3.metric("DC/AC Ratio",f"{P.get('inv_ratio',inv_ratio):.2f}")
-        ci4.metric("Inverter Eff.",f"{P.get('inv_eff',inv_eff)*100 if 'inv_eff' in P else 97:.0f}%")
         c_i1,c_i2=st.columns([1,2])
         with c_i1:
-            ni=math.ceil(P.get("cap",cap)/P.get("inv_cap",inv_cap)) if P.get("inv_cap",inv_cap)>0 else 1
             st.markdown(f"""<div class="inv-box">
                 <h3 style="color:#6366F1;margin:0">{P.get("inv_type",inv_type)}</h3>
                 <p style="font-size:2rem;font-weight:800;color:#4F46E5;margin:.5rem 0">{P.get("inv_cap",inv_cap):.1f} kVA</p>
-                <p style="color:#6B7280">× {ni} unit(s) | Ratio: {P.get("inv_ratio",inv_ratio):.2f}</p>
+                <p style="color:#6B7280">Ratio: {P.get("inv_ratio",inv_ratio):.2f} | {P.get("inv_type",inv_type)}</p>
             </div>""",unsafe_allow_html=True)
         with c_i2:
             ratio=P.get("inv_ratio",inv_ratio)
             clip="Low ✅" if ratio<=1.20 else ("Medium ⚠️" if ratio<=1.30 else "High ❌")
-            st.dataframe(pd.DataFrame({"Parameter":["PV Array","Inverter AC","DC/AC Ratio","No. of Units","Clipping Risk"],
+            st.dataframe(pd.DataFrame({"Parameter":["PV Array","Inverter AC","DC/AC Ratio","Clipping Risk"],
                 "Value":[f"{P.get('cap',cap)} kWp",f"{P.get('inv_cap',inv_cap):.1f} kVA",
-                         f"{ratio:.2f}",str(ni),clip]}),use_container_width=True,hide_index=True)
+                         f"{ratio:.2f}",clip]}),use_container_width=True,hide_index=True)
         sh("DAILY LOAD PROFILE")
         c_l1,c_l2=st.columns([1,2])
         with c_l1:
